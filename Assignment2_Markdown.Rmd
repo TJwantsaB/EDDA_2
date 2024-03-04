@@ -76,6 +76,14 @@ birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
 
 ### e)
 
+### f)
+
+### g)
+
+### h)
+
+### i)
+
 ## Gid)
 
 ### a)
@@ -88,8 +96,14 @@ birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
 
 ### e)
 
-## TJ)
+### f)
 
+### g)
+
+### h)
+
+### i)
+## TJ)
 ### a)
 
 ```{r}
@@ -120,12 +134,61 @@ print(vif_values)
 Upon inspection of correlation matrix, we note that variables mage and fage appear to be highly correlated (0.806), however their VIF values are under 5, therefore we conclude that the model has no problem of collinearity.
 
 ### b)
+```{r}
+summary(TJ_BW)
+TJ_BW_reduced <- step(TJ_BW, direction = "backward")
+summary(TJ_BW_reduced)
+```
+Using the step-down approach we arrived at the following model: Birthweight ~ 
+Length + Headcirc + Gestation + mage + mppwt + fheight with R-squared: 0.757
+
+```{r}
+plot(TJ_BW_reduced, which = 1)
+
+qqnorm(residuals(TJ_BW_reduced))
+qqline(residuals(TJ_BW_reduced))
+shapiro.test(residuals(TJ_BW_reduced))
+```
+In the residuals vs fitted plot, the pattern from 3.0 to 3.5 could hint at 
+non-linearity, adding polynomial or interaction terms might improve fit. Upon
+further inspection of the QQ-plot and shapiro-Wilk test we conclude that the
+assumption of normally distributed residuals is not met.
 
 ### c)
+```{r}
+# Calculate the average values for the predictors
+avg_data <- data.frame(
+  Length = mean(birthweight_data$Length, na.rm = TRUE),
+  Headcirc = mean(birthweight_data$Headcirc, na.rm = TRUE),
+  Gestation = mean(birthweight_data$Gestation, na.rm = TRUE),
+  mage = mean(birthweight_data$mage, na.rm = TRUE),
+  mppwt = mean(birthweight_data$mppwt, na.rm = TRUE),
+  fheight = mean(birthweight_data$fheight, na.rm = TRUE)
+)
+
+# Assuming your model is named 'TJ_BW_reduced' and is already fitted with the correct formula
+# Predict the Birthweight for the average values with 95% confidence interval
+confidence_interval <- predict(TJ_BW_reduced, newdata = avg_data, interval = "confidence", level = 0.95)
+
+# Predict the Birthweight for the average values with 95% prediction interval
+prediction_interval <- predict(TJ_BW_reduced, newdata = avg_data, interval = "prediction", level = 0.95)
+
+# View the results
+confidence_interval
+prediction_interval
+```
 
 ### d)
 
 ### e)
+
+### f)
+
+### g)
+
+### h)
+
+### i)
 
 # Exercise 3
 
