@@ -1,0 +1,54 @@
+---
+title: "Assignment 2"
+author: "Lukas Unruh, Teije Langelaan, Gidon Quint"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(333)
+library(lme4)
+library(Matrix)
+options(digits=3)
+```
+
+# Exercise 1
+
+## Lukas)
+
+### a)
+
+### b)
+
+### c)
+
+### d)
+
+### e)
+
+## Gid)
+
+### a)
+
+### b)
+
+### c)
+
+### d)
+
+### e)
+
+## TJ)
+
+### a)
+
+### b)
+
+### c)
+
+### d)
+
+### e)
