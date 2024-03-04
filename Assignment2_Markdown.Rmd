@@ -81,6 +81,19 @@ birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
 
 ## TJ)
 ### a)
+```{r}
+# Assuming birthweight_data is your dataset
+summary(birthweight_data)
+pairs(~Birthweight + Length + Headcirc + Gestation + mage + mnocig + mheight + mppwt + fage + fedyrs + fnocig + fheight, data=birthweight_data)
+
+# Fit a linear model
+TJ_BW <- lm(Birthweight ~ Length + Headcirc + Gestation + mage + mnocig + mheight + mppwt + fage + fedyrs + fnocig + fheight, data=birthweight_data)
+
+# Plot diagnostics for influential points
+par(mfrow=c(2,2))
+plot(TJ_BW, which=1:4) # Plots for residuals, leverage, etc.
+
+```
 
 ### b)
 
