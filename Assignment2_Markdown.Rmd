@@ -103,6 +103,7 @@ birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
 ### h)
 
 ### i)
+
 ## TJ)
 ### a)
 
