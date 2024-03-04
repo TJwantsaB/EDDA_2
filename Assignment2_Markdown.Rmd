@@ -1,7 +1,7 @@
 ---
 title: "Assignment 2"
 author: "Lukas Unruh, Teije Langelaan, Gidon Quint"
-date: "`r Sys.Date()`"
+date: "`r format(Sys.Date(), '%d %B, %Y')`"
 output: 
   pdf_document:
     latex_engine: xelatex
@@ -16,9 +16,7 @@ options(digits=3)
 ```
 
 # Exercise 1
-
 ## Lukas)
-
 ### a)
 
 ### b)
@@ -30,7 +28,6 @@ options(digits=3)
 ### e)
 
 ## Gid)
-
 ### a)
 
 ### b)
@@ -42,7 +39,6 @@ options(digits=3)
 ### e)
 
 ## TJ)
-
 ### a)
 
 ### b)
@@ -52,3 +48,60 @@ options(digits=3)
 ### d)
 
 ### e)
+
+
+# Exercise 2
+## Lukas)
+### a)
+
+### b)
+
+### c)
+
+### d)
+
+### e)
+
+## Gid)
+### a)
+
+### b)
+
+### c)
+
+### d)
+
+### e)
+
+## TJ)
+### a)
+
+### b)
+
+### c)
+
+### d)
+
+### e)
+
+# Exercise 3
+## Lukas)
+### a)
+
+### b)
+
+### c)
+
+## Gid)
+### a)
+
+### b)
+
+### c)
+
+## TJ)
+### a)
+
+### b)
+
+### c)
