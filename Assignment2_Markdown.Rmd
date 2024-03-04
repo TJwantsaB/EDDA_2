@@ -16,6 +16,9 @@ options(digits=3)
 ```
 
 # Exercise 1
+```{r}
+fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
+```
 ## Lukas)
 ### a)
 
@@ -51,6 +54,9 @@ options(digits=3)
 
 
 # Exercise 2
+```{r}
+birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
+```
 ## Lukas)
 ### a)
 
@@ -85,6 +91,9 @@ options(digits=3)
 ### e)
 
 # Exercise 3
+```{r}
+awards_data=read.table(file="awards.txt",header=TRUE)
+```
 ## Lukas)
 ### a)
 
