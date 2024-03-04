@@ -12,14 +12,18 @@ knitr::opts_chunk$set(echo = TRUE)
 set.seed(333)
 library(lme4)
 library(Matrix)
+library(carData)
 options(digits=3)
 ```
 
 # Exercise 1
+
 ```{r}
 fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
 ```
+
 ## Lukas)
+
 ### a)
 
 ### b)
@@ -31,6 +35,7 @@ fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
 ### e)
 
 ## Gid)
+
 ### a)
 
 ### b)
@@ -42,6 +47,7 @@ fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
 ### e)
 
 ## TJ)
+
 ### a)
 
 ### b)
@@ -52,12 +58,14 @@ fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
 
 ### e)
 
-
 # Exercise 2
+
 ```{r}
 birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
 ```
+
 ## Lukas)
+
 ### a)
 
 ### b)
@@ -69,6 +77,7 @@ birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
 ### e)
 
 ## Gid)
+
 ### a)
 
 ### b)
@@ -80,7 +89,35 @@ birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
 ### e)
 
 ## TJ)
+
 ### a)
+
+```{r}
+# Assuming birthweight_data is your dataset
+summary(birthweight_data)
+
+# Fit a linear model
+TJ_BW <- lm(Birthweight ~ Length + Headcirc + Gestation + mage + mnocig + mheight + mppwt + fage + fedyrs + fnocig + fheight, data=birthweight_data)
+
+# Plot diagnostics for influential points
+par(mfrow=c(2,2))
+plot(TJ_BW, which=1:4) # Plots for residuals, leverage, etc.
+round(cooks.distance(TJ_BW),2)
+
+
+```
+
+Upon inspection of Cook's distances, we conclude that there are no influence points in the data set, as no observation has a Cook's distance greater than 1.
+
+```{r}
+predictors <- birthweight_data[, c("Length", "Headcirc", "Gestation", "mage", "mnocig", "mheight", "mppwt", "fage", "fedyrs", "fnocig", "fheight")]
+print(cor(predictors))
+
+vif_values <- vif(TJ_BW)
+print(vif_values)
+```
+
+Upon inspection of correlation matrix, we note that variables mage and fage appear to be highly correlated (0.806), however their VIF values are under 5, therefore we conclude that the model has no problem of collinearity.
 
 ### b)
 
@@ -91,10 +128,13 @@ birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
 ### e)
 
 # Exercise 3
+
 ```{r}
 awards_data=read.table(file="awards.txt",header=TRUE)
 ```
+
 ## Lukas)
+
 ### a)
 
 ### b)
@@ -102,6 +142,7 @@ awards_data=read.table(file="awards.txt",header=TRUE)
 ### c)
 
 ## Gid)
+
 ### a)
 
 ### b)
@@ -109,6 +150,7 @@ awards_data=read.table(file="awards.txt",header=TRUE)
 ### c)
 
 ## TJ)
+
 ### a)
 
 ### b)
