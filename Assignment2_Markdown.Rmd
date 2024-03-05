@@ -194,17 +194,12 @@ lambda.min=cv.lasso$lambda.min; lambda.1se=cv.lasso$lambda.1se
 coef(lasso.mod,s=cv.lasso$lambda.1se) #beta’s for the best lambda
 y.pred=predict(lasso.mod,s=lambda.1se,newx=x.test) #predict for test
 mse.lasso=mean((y.test-y.pred)^2) #mse for the predicted test rows
-
-<<<<<<< HEAD
 ```
 Lasso model: Birthweight ~ Length + Headcirc + Gestation + lowbwt
 Step down:   Birthweight ~ Length + Headcirc + Gestation + mage + mppwt + fheight
 
 The Lasso model and the step-down method both identify Length, Head Circumference, and Gestation as significant predictors of Birthweight, indicating their critical role. The Lasso model is more parsemonious, using two fewer variables. It uniquely includes lowbwt, a binary variable distinguishing between birth weights below and above 6 pounds, which the step-down model omits. Conversely, the step-down model retains mage, mppwt, and fheight, suggesting these factors may have some predictive value not captured by the Lasso model, likely due to its penalty on model complexity that excludes less impactful variables.
-=======
 
-
->>>>>>> 42dab47458a10d1a9746c1689b594bea42d7ea91
 ### e)
 
 ### f)
