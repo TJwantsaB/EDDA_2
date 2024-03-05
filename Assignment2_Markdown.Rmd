@@ -150,10 +150,7 @@ qqnorm(residuals(TJ_BW_reduced))
 qqline(residuals(TJ_BW_reduced))
 shapiro.test(residuals(TJ_BW_reduced))
 ```
-In the residuals vs fitted plot, the pattern from 3.0 to 3.5 could hint at 
-non-linearity, adding polynomial or interaction terms might improve fit. Upon
-further inspection of the QQ-plot and shapiro-Wilk test we conclude that the
-assumption of normally distributed residuals is not met.
+In the residuals vs fitted plot, the pattern from 3.0 to 3.5 could hint at non-linearity, adding polynomial or interaction terms might improve fit. Upon further inspection of the QQ-plot and shapiro-Wilk test we conclude that the assumption of normally distributed residuals is not met.
 
 ### c)
 ```{r}
@@ -180,6 +177,8 @@ prediction_interval
 ```
 
 ### d)
+
+
 
 ### e)
 
