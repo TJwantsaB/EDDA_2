@@ -62,8 +62,9 @@ fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
 
 ```{r}
 birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
-```
 
+```
+In our data set we have multiple continuous and discrete variables. However, for the model we do not have to state that discrete variables are factors as all of them only have 2 levels (no = 0 and yes = 1).
 ## Lukas)
 
 ### a)
@@ -127,7 +128,7 @@ Upon inspection of Cook's distances, we conclude that there are no influence poi
 ```{r}
 predictors <- birthweight_data[, c("Length", "Headcirc", "Gestation", "mage", "mnocig", "mheight", "mppwt", "fage", "fedyrs", "fnocig", "fheight")]
 print(cor(predictors))
-
+library(carData)
 vif_values <- vif(TJ_BW)
 print(vif_values)
 ```
@@ -150,10 +151,7 @@ qqnorm(residuals(TJ_BW_reduced))
 qqline(residuals(TJ_BW_reduced))
 shapiro.test(residuals(TJ_BW_reduced))
 ```
-In the residuals vs fitted plot, the pattern from 3.0 to 3.5 could hint at 
-non-linearity, adding polynomial or interaction terms might improve fit. Upon
-further inspection of the QQ-plot and shapiro-Wilk test we conclude that the
-assumption of normally distributed residuals is not met.
+In the residuals vs fitted plot, the pattern from 3.0 to 3.5 could hint at non-linearity, adding polynomial or interaction terms might improve fit. Upon further inspection of the QQ-plot and shapiro-Wilk test we conclude that the assumption of normally distributed residuals is not met.
 
 ### c)
 ```{r}
@@ -180,8 +178,32 @@ prediction_interval
 ```
 
 ### d)
+```{r}
+library(glmnet)
+set.seed(3)
+x=as.matrix(birthweight_data[,-3]) #remove the response variable
+y=as.double(as.matrix(birthweight_data[,3])) #only the response variable
+train=sample(1:nrow(x),0.67*nrow(x)) # train by using 2/3 of the data
+x.train=x[train,]; y.train=y[train] # data to train
+x.test=x[-train,]; y.test=y[-train] # data to test the prediction quality
+lasso.mod=glmnet(x.train,y.train,alpha=1)
+cv.lasso=cv.glmnet(x.train,y.train,alpha=1,type.measure="mse")
+plot(lasso.mod,label=T,xvar="lambda") #have a look at the lasso path
+plot(cv.lasso) # the best lambda by cross-validation
+lambda.min=cv.lasso$lambda.min; lambda.1se=cv.lasso$lambda.1se
+coef(lasso.mod,s=cv.lasso$lambda.1se) #beta’s for the best lambda
+y.pred=predict(lasso.mod,s=lambda.1se,newx=x.test) #predict for test
+mse.lasso=mean((y.test-y.pred)^2) #mse for the predicted test rows
 
+TJ_lasso <- lm(Birthweight ~ Length +  Gestation + mage + mnocig + mheight + mppwt + fage + fedyrs + fnocig + fheight, data=birthweight_data)
+```
+Lasso model: Birthweight ~ Length + Headcirc + Gestation + lowbwt
+Step down:   Birthweight ~ Length + Headcirc + Gestation + mage + mppwt + fheight
+
+The Lasso model and the step-down method both identify Length, Head Circumference, and Gestation as significant predictors of Birthweight, indicating their critical role. The Lasso model is more parsemonious, using two fewer variables. It uniquely includes lowbwt, a binary variable distinguishing between birth weights below and above 6 pounds, which the step-down model omits. Conversely, the step-down model retains mage, mppwt, and fheight, suggesting these factors may have some predictive value not captured by the Lasso model, likely due to its penalty on model complexity that excludes less impactful variables.
 ### e)
+
+
 
 ### f)
 
