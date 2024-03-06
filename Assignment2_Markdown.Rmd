@@ -113,8 +113,15 @@ ggplot(fruitfly_data, aes(x = thorax, y = loglongevity, color = activity)) +
        y = "Log(Longevity)")
 
 # added interaction between thorax and activity for regression model
-interaction_model <- lm(loglongevity ~ thorax * activity, data = fruitfly_data)
+interaction_model = lm(loglongevity ~ thorax * activity, data = fruitfly_data)
 summary(interaction_model)
+
+
+qqnorm(residuals(interaction_model))
+qqline(residuals(interaction_model))
+
+plot(fitted(interaction_model), residuals(interaction_model))
+abline(h = 0)
 
 ```
 The scatter plot with regression lines shows a positive relationship between thorax length and log longevity. 
@@ -130,7 +137,35 @@ The regression analysis conducted so far has shown that there is a significant i
 
 ### d)
 
+Model c) has a slightly higher adjusted R-squared value (0.709 compared to 0.717) and these additional explanatory variables are significant (as seen in the interaction term with p = 0.055), this suggests that model c) is potentially better at explaining the variability in the response, despite being more complex.
+Another point worth mentioning is that thorax length allows for a more nuanced interpretation of the data, acknowledging the biological reality that physical traits can affect longevity.
+However neither is necessarily "wrong".
+
 ### e)
+
+```{r}
+
+# this plot as it is done in the lecture but there are probably better ways to do it
+plot(longevity ~ thorax, data = fruitfly_data, pch = as.character(fruitfly_data$activity),
+     main = "Longevity vs Thorax Length by Activity Level",
+     xlab = "Thorax Length", ylab = "Longevity")
+
+
+
+fruitfly_data$activity = as.factor(fruitfly_data$activity)
+
+ancova_model = lm(longevity ~ activity + thorax, data = fruitfly_data)
+
+summary(ancova_model)
+
+anova(ancova_model)
+
+drop1(ancova_model, test = "F")
+
+
+
+```
+The ANCOVA with raw longevity data has a slightly lower adjusted R-squared compared to the model with log-transformed longevity, which suggests that the log transformation may provide a better fit. The choice of using the log of longevity as the response variable likely helped to stabilize variance and linearize the relationship between predictors and longevity, making it a wise choice for the analysis.
 
 ## TJ)
 
