@@ -13,6 +13,7 @@ set.seed(333)
 library(lme4)
 library(Matrix)
 library(carData)
+library(ggplot2)
 options(digits=3)
 ```
 
@@ -35,13 +36,97 @@ fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
 ### e)
 
 ## Gid)
-# Test this is my branch!!
-
+```{r}
+fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
+```
 ### a)
+```{r}
+head(fruitfly_data)
+fruitfly_data$loglongevity = log(fruitfly_data$longevity)
+head(fruitfly_data)
+
+par(mfrow = c(2, 3))
+
+for (activity_level in unique(fruitfly_data$activity)) {
+  data_subset = subset(fruitfly_data, activity == activity_level)$loglongevity
+  
+  qqnorm(data_subset, main = paste("Q-Q plot -", activity_level))
+  qqline(data_subset)
+  
+  hist(data_subset, main = paste("Histogram -", activity_level), xlab = "Log(Longevity)", breaks = 20)
+  
+  shapiro_test = shapiro.test(data_subset)
+  cat("Shapiro-Wilk test for", activity_level, "activity: p-value =", shapiro_test$p.value, "\n")
+}
+
+boxplot(loglongevity ~ activity, data = fruitfly_data, main = "Log(Longevity) by Activity Level", xlab = "Activity Level", ylab = "Log(Longevity)")
+
+kruskal.test(loglongevity ~ activity, data = fruitfly_data)
+
+aggregate(loglongevity ~ activity, data = fruitfly_data, FUN = median)
+
+```
+The aggregate function's output shows the median log-longevity for each activity group: isolated flies have the highest median log-longevity (4.13), followed by those with low sexual activity (4.03), and flies with high sexual activity have the lowest median log-longevity (3.69). This suggests that increased sexual activity may be associated with decreased longevity in fruit flies
 
 ### b)
+I do linear regression although we would need normality. However because we use the loglongevity the use of linear regression is fine
+
+```{r}
+multireg_model = lm(loglongevity ~ activity + thorax, data = fruitfly_data)
+summary(multireg_model)
+
+qqnorm(residuals(multireg_model))
+qqline(residuals(multireg_model))
+plot(fitted(multireg_model), residuals(multireg_model))
+abline(h = 0)
+```
+This shows that the residuals deviade from normality. Especially at the tails. 
+The plot of fitted values against residuals does not show a clear pattern, which is good as it suggests homoscedasticity (constant variance of the residuals across the range of fitted values). There is no apparent funnel shape or systematic pattern, which is indicative of potential issues with variance.
+
+because the Q-Q plot does show some deviation from normality, it could be beneficial to either transform the data to achieve normality or use a robust regression method that is less sensitive to non-normality.
+
+activityisolated and activitylow are both positive, with isolated having a larger coefficient than low. Showing that compared to high sexual activity, being isolated is associated with an increase in log-longevity (which translates to an increase in actual longevity), while low sexual activity is also associated with an increase in log-longevity but to a lesser extent than isolation. Therefore, sexual activity appears to decrease longevity compared to no activity, with higher activity decreasing it more.
+
+```{r}
+
+average_thorax = mean(fruitfly_data$thorax)
+
+new_data = expand.grid(activity = unique(fruitfly_data$activity), thorax = average_thorax)
+
+new_data$predicted_loglongevity = predict(multireg_model, newdata = new_data)
+
+new_data$predicted_longevity = exp(new_data$predicted_loglongevity)
+
+print(new_data)
+
+
+```
 
 ### c)
+
+```{r}
+ggplot(fruitfly_data, aes(x = thorax, y = loglongevity, color = activity)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Relationship between Thorax Length and Log(Longevity) by Activity Group",
+       x = "Thorax Length",
+       y = "Log(Longevity)")
+
+# added interaction between thorax and activity for regression model
+interaction_model <- lm(loglongevity ~ thorax * activity, data = fruitfly_data)
+summary(interaction_model)
+
+```
+The scatter plot with regression lines shows a positive relationship between thorax length and log longevity. 
+The slopes of the lines appear to differ between groups, suggesting that the rate of increase in longevity with thorax length may vary by sexual activity level.
+
+The regression analysis suggests that thorax length positively affects longevity in fruit flies, with the effect being less for flies with higher sexual activity.
+The interaction between thorax length and isolated sexual activity is marginally (0.55) significant, indicating a possible difference in this effect between flies with no sexual activity and those with high sexual activity.
+
+GPT GENERATED
+
+The regression analysis conducted so far has shown that there is a significant interaction between thorax length and the isolated group of fruit flies, suggesting that the dependence of longevity on thorax length differs when flies are kept in isolation compared to those with high sexual activity. For flies with low sexual activity, however, the interaction was not statistically significant, indicating that their longevity dependence on thorax length does not differ much from flies with high sexual activity. This suggests that the influence of thorax length on longevity is not consistent across all conditions of sexual activity.
+
 
 ### d)
 
