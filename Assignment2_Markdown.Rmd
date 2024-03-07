@@ -639,11 +639,50 @@ awards_data=read.table(file="awards.txt",header=TRUE)
 
 ## Gid)
 
+```{r}
+awards_data=read.table(file="awards.txt",header=TRUE)
+head(awards_data)
+```
+
 ### a)
+
+```{r}
+awards_data$prog <- factor(awards_data$prog)
+model = glm(num_awards ~ prog, family = poisson(link = "log"), data = awards_data)
+summary(model)
+
+new_data = data.frame(prog = factor(c(1, 2, 3)))
+predicted_awards = predict(model, newdata = new_data, type = "response")
+
+print(predicted_awards)
+``` 
+
+The program type general is best for the number of awards. 
 
 ### b)
 
+```{r}
+kruskal_test_result = kruskal.test(num_awards ~ prog, data = awards_data)
+
+print(kruskal_test_result)
+``` 
+As we can see we reject H0 that everything is the same as the p-value is 0.005.
+However we can not infer which program type is the best for the number of awards. 
+
 ### c)
+
+``` {r}
+model_prog_math = glm(num_awards ~ prog * math, family = poisson(link = "log"), data = awards_data)
+
+summary(model_prog_math)
+
+new_data_predict = data.frame(prog = factor(c(1, 2, 3)), math = rep(56, 3))
+predicted_awards_prog_math = predict(model_prog_math, newdata = new_data_predict, type = "response")
+
+print(predicted_awards_prog_math)
+```
+
+The Poisson regression analysis reveals no statistically significant influence of program type, math score, or their interaction on the number of awards at a math score of 56. However, predictions suggest students in the general program (program 2) may receive slightly more awards than those in vocational or academic programs, though caution is advised due to the lack of statistical significance.
 
 ## TJ)
 
