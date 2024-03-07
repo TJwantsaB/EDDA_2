@@ -141,6 +141,9 @@ Model c) has a slightly higher adjusted R-squared value (0.709 compared to 0.717
 Another point worth mentioning is that thorax length allows for a more nuanced interpretation of the data, acknowledging the biological reality that physical traits can affect longevity.
 However neither is necessarily "wrong".
 
+Normally we would say that model b) is better because it has about the same R2 and it has less variables however thorax!
+
+
 ### e)
 
 ```{r}
@@ -208,15 +211,168 @@ In our data set we have multiple continuous and discrete variables. However, for
 
 ## Gid)
 
+```{r}
+birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
+
+```
+
 ### a)
+
+```{r}
+full_model = lm(Birthweight ~ Length + Headcirc + Gestation + mage + mnocig + 
+                mheight + mppwt + fage + fedyrs + fnocig + fheight, data = birthweight_data)
+
+cooksD = cooks.distance(full_model)
+
+plot(cooksD, type = "h", main = "Cook's Distance Plot", ylab = "Cook's Distance")
+abline(h = 1, col = "red")
+```
+There is not a single value with a Cook's Distance higher then 1, so we conclude that there is no influence point.
+#### Question: Can we conclude that there is no influence point? Or is it the same with H0 and H1 and we can only conclud H1 if influence point. Think of the normality question in Shapiro Wilk test.
+
+```{r}
+library(car)
+
+# this is what they do in the slides but with so many variables not that nice...
+pairs(~ Length + Headcirc + Gestation + mage + mnocig + mheight + mppwt + fage + fedyrs + fnocig + fheight, data = birthweight_data)
+
+cor(birthweight_data[,c("Length", "Headcirc", "Gestation", "mage", "mnocig", "mheight", "mppwt", "fage", "fedyrs", "fnocig", "fheight")])
+
+vif_values = vif(full_model)
+
+high_vif = vif_values[vif_values > 5]
+if(length(high_vif) > 0) {
+  print(high_vif)
+} else {
+  print("No value is higher than 5")
+}
+```
+The correlation and VIF analysis for the Birthweight dataset indicates moderate collinearity among predictors, with no VIF values exceeding the threshold of 5, suggesting that while relationships exist, they may not significantly impair the regression model's effectiveness.
 
 ### b)
 
+#### Question: Shouldnt we delete the coulomn lowbwt? As that should always have an effect on birthweight
+
+```{r}
+reduced_model <- step(full_model, direction="backward")
+
+summary(reduced_model)
+```
+We deleted fage, mheight, fedyrs, fnocig, mnocig and mage in this order. Resulting in a model: Birthweight ~ Length + Headcirc + Gestation + mage + mppwt + fheight
+
+#### To me it looks like this doesnt work So I do it again but manually
+```{r}
+summary(full_model)
+summary(lm(Birthweight ~ Length + Headcirc + Gestation + mage + mnocig + mheight + mppwt + fedyrs + fnocig + fheight, data = birthweight_data))
+summary(lm(Birthweight ~ Length + Headcirc + Gestation + mage + mnocig + mppwt + fedyrs + fnocig + fheight, data = birthweight_data))
+summary(lm(Birthweight ~ Length + Headcirc + Gestation + mage + mnocig + mppwt + fnocig + fheight, data = birthweight_data))
+summary(lm(Birthweight ~ Length + Headcirc + Gestation + mage + mppwt + fheight, data = birthweight_data))
+summary(lm(Birthweight ~ Headcirc + Gestation + mage + mppwt + fheight, data = birthweight_data))
+summary(lm(Birthweight ~ Headcirc + Gestation + mage + mppwt, data = birthweight_data))
+summary(lm(Birthweight ~ Headcirc + Gestation + mppwt, data = birthweight_data))
+final_model = lm(Birthweight ~ Headcirc + Gestation, data = birthweight_data)
+summary(final_model)
+```
+This way we end up with a completely significant model however only with Headcirc and Gestation. 
+
+```{r}
+residuals = residuals(final_model)
+
+par(mfrow = c(1, 3))
+boxplot(residuals, main = "Boxplot of Residuals", ylab = "Residuals", xlab = "Index")
+qqnorm(residuals, main = "Q-Q Plot of Residuals")
+qqline(residuals, col = "red")
+hist(residuals, main = "Histogram of Residuals", xlab = "Residuals", breaks = 20)
+
+shapiro.test(residuals)
+```
+From the shapiro wilk test we cannot conclude that the residuals are not normally distribtuted, however after taking a good look ath the QQ plot and the histoplot we conclude that our residuals are not normally distributed.
+
+
 ### c)
+#### Remark. I dont understand these formulas: 
+Now we are left with two different models.
+Model 1 with R
+2 = 0.771 and σˆ = 2.51:
+Fat = -23.6345 + 0.8565*Thigh + error
+Model 2 with R
+2 = 0.7862 and σˆ = 2.496:
+Fat = 6.7916 + 1.0006*Triceps -0.4314*Midarm + error
+
+Slide 10 of lecture 8
+
+```{r}
+fitted_values = fitted(final_model)
+print(fitted_values)
+
+average_values = data.frame(
+  Headcirc = mean(birthweight_data$Headcirc, na.rm = TRUE),
+  Gestation = mean(birthweight_data$Gestation, na.rm = TRUE)
+)
+
+confidence_intervals = predict(final_model, newdata = average_values, interval = "confidence", level = 0.95)
+
+prediction_intervals = predict(final_model, newdata = average_values, interval = "prediction", level = 0.95)
+
+print("95% Confidence Intervals for the Mean Response:")
+print(confidence_intervals)
+print("95% Prediction Intervals for a New Observation:")
+print(prediction_intervals)
+```
+The output indicates that for babies with average head circumference and gestation, the model predicts a mean Birthweight of 3.31 kg, with a 95% confidence interval of 3.21 to 3.42 kg for the mean and a wider 95% prediction interval of 2.61 to 4.02 kg for individual observations, reflecting the increased uncertainty in predicting specific outcomes.
 
 ### d)
 
+```{r}
+library(glmnet)
+
+x=as.matrix(birthweight_data[,-3])
+y=as.double(as.matrix(birthweight_data[,3]))
+
+train_indices = sample(1:nrow(x), 0.67 * nrow(x))
+x.train = x[train_indices,]
+y.train = y[train_indices]
+x.test = x[-train_indices,]
+y.test = y[-train_indices]
+
+lasso_mod = glmnet(x.train, y.train, alpha = 1)
+
+cv_lasso = cv.glmnet(x.train, y.train, alpha = 1, type.measure = 'mse')
+
+plot(lasso_mod, label = TRUE, xvar = "lambda")
+plot(cv_lasso)
+
+lambda.min = cv_lasso$lambda.min
+lambda.1se = cv_lasso$lambda.1se
+
+best_coefs = coef(lasso_mod, s = lambda.min)
+
+y.pred = predict(lasso_mod, s = lambda.min, newx = x.test)
+
+mse_lasso = mean((y.test - y.pred)^2)
+
+print(list(lambda.min = lambda.min, lambda.1se = lambda.1se))
+print(best_coefs)
+print(mse_lasso)
+
+```
+
+##### I am sorry I really looked but didnt know how to compare or comment. I am not too sure what to do here
+
 ### e)
+
+```{r}
+filtered_data = birthweight_data[, c("lowbwt", "Gestation", "smoker", "mage35")]
+
+
+
+# For smoking mothers
+boxplot(Birthweight ~ smoker, data=birthweight_data, main="Birthweight by Smoking Status", xlab="Smoker", ylab="Birthweight")
+
+# For mothers over 35
+boxplot(Birthweight ~ mage35, data=birthweight_data, main="Birthweight by Mother's Age", xlab="Mother age > 35", ylab="Birthweight")
+
+```
 
 ### f)
 
