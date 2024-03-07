@@ -366,6 +366,8 @@ print(mse_lasso)
 ```{r}
 filtered_data = birthweight_data[, c("lowbwt", "Gestation", "smoker", "mage35")]
 
+table(smoker = filtered_data$smoker, lowbwt = filtered_data$lowbwt)
+table(mage35 = filtered_data$mage35, lowbwt = filtered_data$lowbwt)
 
 
 # For smoking mothers
@@ -376,13 +378,70 @@ boxplot(Birthweight ~ mage35, data=birthweight_data, main="Birthweight by Mother
 
 ```
 
+The data indicates that smoking mothers have a higher proportion of babies with low birth weight compared to non-smoking mothers, while there is no clear trend observed in the birth weight concerning the mother's age being above 35.
+However as seen in the tables, some combinations of low birth weight and smoking or mothers age above 35 have a prevalence of 1. So the power of this effect is only an estimate and very weak.  
+
 ### f)
+
+```{r}
+logistic_model = glm(lowbwt ~ Gestation + smoker + mage35, family = binomial, data = birthweight_data)
+
+summary(logistic_model)
+```
+
+The logistic regression results show that increased gestation significantly decreases the odds of low birth weight (which aligns with medical expectations that longer gestation leads to higher birth weight as shown above), while the effects of smoking and maternal age over 35 are positive but not statistically significant, indicating limited evidence of their influence within this dataset.
 
 ### g)
 
+```{r}
+model_gestation_smoker = glm(lowbwt ~ Gestation * smoker, data = birthweight_data, family = binomial)
+
+anova(model_gestation_smoker, test = "Chisq")
+
+model_gestation_mage35 = glm(lowbwt ~ Gestation * mage35, data = birthweight_data, family = binomial)
+
+anova(model_gestation_mage35, test = "Chisq")
+
+```
+
+Note for later this was in the slide: H0 : β1 = β2 = β3 = β4 is not rejected
+
+For both the smoker and mothers age above 35 we do not reject the H0 as the interactions are both not significant. 
+
+
+##### Regarding the choosing of the correct model I dont know sorry
+
 ### h)
 
+```{r}
+new_data <- data.frame(Gestation = rep(40, 4),
+                       smoker = c(0, 1, 0, 1),
+                       mage35 = c(0, 0, 1, 1))
+
+probabilities <- predict(logistic_model, newdata = new_data, type = "response")
+
+print(probabilities)
+```
+
 ### i)
+
+```{r}
+# For smoker vs. lowbwt
+table_smoker = table(birthweight_data$smoker, birthweight_data$lowbwt)
+chi2_test_smoker = chisq.test(table_smoker)
+print(chi2_test_smoker)
+
+# For mage35 vs. lowbwt
+table_mage35 = table(birthweight_data$mage35, birthweight_data$lowbwt)
+chi2_test_mage35 = chisq.test(table_mage35)
+print(chi2_test_mage35)
+
+```
+
+And advantage is it's straightforward and doesn't assume a specific form for the relationship between variables, making it ideal for initial exploration of associations between categorical variables.
+A disadvantage is it lacks the ability to adjust for other variables or to easily interpret effects in terms of odds ratios, which logistic regression provides.
+Also very low sample size for some groups so the chisquare test is very unreliable in this case.
+
 
 ## TJ)
 
