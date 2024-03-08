@@ -24,15 +24,112 @@ fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
 
 ## Lukas)
 
+```{r}
+fruitfly_data$loglongevity <- log(fruitfly_data$longevity)
+```
+
 ### a)
+
+```{r}
+boxplot(loglongevity ~ activity, data = fruitfly_data, 
+        xlab = "Activity Group", ylab = "Log Longevity",
+        main = "Log Longevity by Activity Group")
+```
+
+We perform ANOVA to test whether sexual activity influences longevity.
+
+-   $H_0$: The mean longevity is the same across all groups.
+
+-   $H_1$: The mean longevity is not the same across all groups.
+
+```{r}
+fruitfly_data$activity=factor(fruitfly_data$activity)
+longaov <- lm(loglongevity ~ activity, data = fruitfly_data); anova(longaov)
+```
+
+Since we get a p-value of 1.8e-7, we reject $H_0$ and conclude that sexual activity influences longevity.
+
+The estimated longevities for the three conditions are:
+
+```{r}
+tapply(fruitfly_data$longevity, fruitfly_data$activity, mean)
+```
+
+From the values you can see that the mean of "high" is a lot lower than the one of the two others.
 
 ### b)
 
+-   $H_0$: The mean longevity is the same across all groups.
+
+-   $H_1$: The mean longevity is not the same across all groups.
+
+```{r}
+longaov <- lm(loglongevity ~ thorax + activity, data = fruitfly_data)
+anova(longaov)
+```
+
+Low p-value, so reject $H_0$.
+
+```{r}
+summary(longaov)
+```
+
+Groups isolated and low increase longevity, high decreases.
+
+```{r}
+# Not sure about this...
+avg_thorax_length <- mean(fruitfly_data$thorax)
+
+estimated_longevity_isolated <- (-67.37) + 20.07 + (132.62 * avg_thorax_length)
+estimated_longevity_low <- (-67.37) + 13.05 + (132.62 * avg_thorax_length)
+estimated_longevity_high <- (-67.37) + (132.62 * avg_thorax_length)
+```
+
 ### c)
+
+```{r}
+# Scatter plots for each activity group with linear regression lines
+plot(fruitfly_data$thorax[fruitfly_data$activity == "isolated"], fruitfly_data$longevity[fruitfly_data$activity == "isolated"],
+     xlab = "Thorax Length", ylab = "Longevity", main = "Isolated", pch = 16, col = "blue")
+abline(lm(longevity ~ thorax, data = subset(fruitfly_data, activity == "isolated")), col = "blue")
+
+plot(fruitfly_data$thorax[fruitfly_data$activity == "low"], fruitfly_data$longevity[fruitfly_data$activity == "low"],
+     xlab = "Thorax Length", ylab = "Longevity", main = "Low Activity", pch = 16, col = "red")
+abline(lm(longevity ~ thorax, data = subset(fruitfly_data, activity == "low")), col = "red")
+
+plot(fruitfly_data$thorax[fruitfly_data$activity == "high"], fruitfly_data$longevity[fruitfly_data$activity == "high"],
+     xlab = "Thorax Length", ylab = "Longevity", main = "High Activity", pch = 16, col = "green")
+abline(lm(longevity ~ thorax, data = subset(fruitfly_data, activity == "high")), col = "green")
+
+```
+
+Graphs: An increase in thorax length also increases the longevity for all activity groups.
+
+Perform ANCOVA.
+
+-   $H_0$: There is no interaction between activity and thorax.
+
+-   $H_1$: There is an interaction between activity and thorax.
+
+```{r}
+longaov = lm(loglongevity ~ activity*thorax, data = fruitfly_data)
+summary(longaov)
+```
+
+We cannot reject $H_0$.
 
 ### d)
 
+The analysis including thorax is preferable as it includes the additional variable for more explanations regarding the sexual activity. However, none of the analyses are wrong, they just provide different insights.
+
 ### e)
+
+```{r}
+longaov = lm(longevity ~ activity*thorax, data = fruitfly_data)
+summary(longaov)
+```
+
+I do not think that using log was wise.
 
 ## Gid)
 
@@ -64,26 +161,162 @@ fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
 birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
 
 ```
+
 In our data set we have multiple continuous and discrete variables. However, for the model we do not have to state that discrete variables are factors as all of them only have 2 levels (no = 0 and yes = 1).
+
 ## Lukas)
 
 ### a)
 
+```{r}
+pairs(birthweight_data) # Also plot residuals?
+```
+
+```{r}
+library("car")
+birthweight_lm <- lm(Birthweight ~ Length + Headcirc + Gestation + mage + mnocig + mheight + mppwt + fage + fedyrs + fnocig + fheight, data=birthweight_data)
+avPlots(birthweight_lm)
+```
+
+```{r}
+round(cooks.distance(birthweight_lm),2)
+```
+
+No value of cook's distance is larger than 1, therefore, no point is considered an influence point.
+
+```{r}
+round(cor(birthweight_data), 2)
+vif(birthweight_lm)
+```
+
+No VIF is greater than 5, therefore there is no reason for concern.
+
 ### b)
+
+```{r}
+reduced_bw_lm = lm(Birthweight ~ Headcirc + Gestation, data=birthweight_data)
+summary(reduced_bw_lm)
+
+```
+
+Order of removal: fage mheight fedyrs fnocig mnocig Length fheight mage mppwt
+
+TODO check assumptions
 
 ### c)
 
+```{r}
+new_data <- data.frame(Headcirc = mean(birthweight_data$Headcirc),
+                       Gestation = mean(birthweight_data$Gestation))
+
+# Predict Birthweight using the reduced model
+predicted <- predict(reduced_bw_lm, new_data, interval = "confidence", level = 0.95)
+
+# Extract confidence intervals
+confidence_intervals <- predicted[, c("fit", "lwr", "upr")]
+
+# Predict Birthweight with prediction intervals
+predicted_with_intervals <- predict(reduced_bw_lm, new_data, interval = "prediction", level = 0.95)
+
+# Extract prediction intervals
+prediction_intervals <- predicted_with_intervals[, c("fit", "lwr", "upr")]
+
+# Display the results
+confidence_intervals
+prediction_intervals
+```
+
 ### d)
+
+```{r}
+library(glmnet)
+set.seed(3)
+x=as.matrix(birthweight_data[,-3]) #remove the response variable
+y=as.double(as.matrix(birthweight_data[,3])) #only the response variable
+train=sample(1:nrow(x),0.67*nrow(x)) # train by using 2/3 of the data
+x.train=x[train,]; y.train=y[train] # data to train
+x.test=x[-train,]; y.test=y[-train] # data to test the prediction quality
+lasso.mod=glmnet(x.train,y.train,alpha=1)
+cv.lasso=cv.glmnet(x.train,y.train,alpha=1,type.measure='mse')
+plot(lasso.mod,label=T,xvar="lambda") #have a look at the lasso path
+plot(cv.lasso) # the best lambda by cross-validation
+plot(cv.lasso$glmnet.fit,xvar="lambda",label=T)
+lambda.min=cv.lasso$lambda.min; lambda.1se=cv.lasso$lambda.1se
+coef(lasso.mod,s=cv.lasso$lambda.min) #beta’s for the best lambda
+y.pred=predict(lasso.mod,s=lambda.min,newx=x.test) #predict for test
+mse.lasso=mean((y.test-y.pred)^2) #mse for the predicted test rows
+```
+
+Headcirc + Gestation + mppwt + lowbwt + mage35
 
 ### e)
 
+```{r}
+# Summary statistics
+table(smoker = birthweight_data$smoker, lowbwt = birthweight_data$lowbwt)
+table(mage35 = birthweight_data$mage35, lowbwt = birthweight_data$lowbwt)
+
+# For smoking mothers
+boxplot(Birthweight ~ smoker, data=birthweight_data, main="Birthweight by Smoking", xlab="Smoker", ylab="Birthweight")
+
+# For mothers over 35
+boxplot(Birthweight ~ mage35, data=birthweight_data, main="Birthweight by Mother's Age", xlab="Mother age > 35", ylab="Birthweight")
+```
+
 ### f)
+
+```{r}
+# do we need factors? mage35 for example?
+lr_model = glm(lowbwt ~ Gestation + smoker + mage35, family = binomial, data = birthweight_data)
+
+summary(lr_model)
+```
+
+Insignifcant results for smoker and mage35. However, higher Gestation significantly reduces the lowbwt (higher odds for lower lowbwt).
+
+Compared to e) we get a more detailed overview of what the effects of the explanatory variables are.
 
 ### g)
 
+```{r}
+lr_model_1 <- glm(lowbwt ~ smoker * Gestation + mage35, data = birthweight_data, family = binomial)
+
+lr_model_2 <- glm(lowbwt ~ mage35 * Gestation + smoker, data = birthweight_data, family = binomial)
+
+summary(lr_model_1)
+summary(lr_model_2)
+
+```
+
+Both interactions seem to be statistically insignificant, therefore, model from f) could be the best.
+
 ### h)
 
+```{r}
+# ChatGPT generated
+# Define the predictor values for each combination
+predictor_values <- expand.grid(smoker = c(0, 1), mage35 = c(0, 1), Gestation = 40)
+
+# Predict the probability of low birth weight for each combination
+predicted_probabilities <- predict(lr_model, newdata = predictor_values, type = "response")
+
+# Combine predictor values and predicted probabilities into a data frame
+results <- cbind(predictor_values, Probability_Low_Birthweight = predicted_probabilities)
+
+# Print the results
+print(results)
+
+```
+
 ### i)
+
+```{r}
+chi2_test_smoker = chisq.test(table(birthweight_data$smoker, birthweight_data$lowbwt))
+print(chi2_test_smoker)
+
+chi2_test_mage35 = chisq.test(table(birthweight_data$mage35, birthweight_data$lowbwt))
+print(chi2_test_mage35)
+```
 
 ## Gid)
 
@@ -106,6 +339,7 @@ In our data set we have multiple continuous and discrete variables. However, for
 ### i)
 
 ## TJ)
+
 ### a)
 
 ```{r}
@@ -136,13 +370,14 @@ print(vif_values)
 Upon inspection of correlation matrix, we note that variables mage and fage appear to be highly correlated (0.806), however their VIF values are under 5, therefore we conclude that the model has no problem of collinearity.
 
 ### b)
+
 ```{r}
 summary(TJ_BW)
 TJ_BW_reduced <- step(TJ_BW, direction = "backward")
 summary(TJ_BW_reduced)
 ```
-Using the step-down approach we arrived at the following model: Birthweight ~ 
-Length + Headcirc + Gestation + mage + mppwt + fheight with R-squared: 0.757
+
+Using the step-down approach we arrived at the following model: Birthweight \~ Length + Headcirc + Gestation + mage + mppwt + fheight with R-squared: 0.757
 
 ```{r}
 plot(TJ_BW_reduced, which = 1)
@@ -151,9 +386,11 @@ qqnorm(residuals(TJ_BW_reduced))
 qqline(residuals(TJ_BW_reduced))
 shapiro.test(residuals(TJ_BW_reduced))
 ```
+
 In the residuals vs fitted plot, the pattern from 3.0 to 3.5 could hint at non-linearity, adding polynomial or interaction terms might improve fit. Upon further inspection of the QQ-plot and shapiro-Wilk test we conclude that the assumption of normally distributed residuals is not met.
 
 ### c)
+
 ```{r}
 # Calculate the average values for the predictors
 avg_data <- data.frame(
@@ -178,6 +415,7 @@ prediction_interval
 ```
 
 ### d)
+
 ```{r}
 library(glmnet)
 set.seed(3)
@@ -195,8 +433,8 @@ coef(lasso.mod,s=cv.lasso$lambda.1se) #beta’s for the best lambda
 y.pred=predict(lasso.mod,s=lambda.1se,newx=x.test) #predict for test
 mse.lasso=mean((y.test-y.pred)^2) #mse for the predicted test rows
 ```
-Lasso model: Birthweight ~ Length + Headcirc + Gestation + lowbwt
-Step down:   Birthweight ~ Length + Headcirc + Gestation + mage + mppwt + fheight
+
+Lasso model: Birthweight \~ Length + Headcirc + Gestation + lowbwt Step down: Birthweight \~ Length + Headcirc + Gestation + mage + mppwt + fheight
 
 The Lasso model and the step-down method both identify Length, Head Circumference, and Gestation as significant predictors of Birthweight, indicating their critical role. The Lasso model is more parsemonious, using two fewer variables. It uniquely includes lowbwt, a binary variable distinguishing between birth weights below and above 6 pounds, which the step-down model omits. Conversely, the step-down model retains mage, mppwt, and fheight, suggesting these factors may have some predictive value not captured by the Lasso model, likely due to its penalty on model complexity that excludes less impactful variables.
 
@@ -220,9 +458,38 @@ awards_data=read.table(file="awards.txt",header=TRUE)
 
 ### a)
 
+```{r}
+awards_data$prog <- factor(awards_data$prog)
+poisson_model=glm(num_awards~prog,family=poisson,data=awards_data)
+summary(poisson_model)
+
+newdata = data.frame(prog = factor(c(1, 2, 3)))
+predicted_awards = predict(poisson_model, newdata = newdata, type = "response")
+
+print(predicted_awards)
+```
+
 ### b)
 
+```{r}
+kruskal_test <- kruskal.test(num_awards ~ prog, data = awards_data)
+print(kruskal_test)
+```
+
+We reject $H_0$ as pvalue is 0.005. However, we do not know which program type is the best.
+
 ### c)
+
+```{r}
+poisson_model=glm(num_awards~prog*math,family=poisson,data=awards_data)
+summary(poisson_model)
+
+program_types <- unique(awards_data$prog)
+math_score <- 56
+predicted_awards <- predict(poisson_model, newdata = data.frame(prog = program_types, math = math_score), type = "response")
+
+print(predicted_awards)
+```
 
 ## Gid)
 
