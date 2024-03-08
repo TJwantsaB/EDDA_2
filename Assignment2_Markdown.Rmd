@@ -252,7 +252,7 @@ Upon inspection of Cook's distances, we conclude that there are no influence poi
 ```{r}
 predictors <- birthweight_data[, c("Length", "Headcirc", "Gestation", "mage", "mnocig", "mheight", "mppwt", "fage", "fedyrs", "fnocig", "fheight")]
 print(cor(predictors))
-library(carData)
+library(car)
 vif_values <- vif(TJ_BW)
 print(vif_values)
 ```
@@ -378,7 +378,7 @@ Upon inspection of the two models, we pick the first one with the interaction of
 
 ### h)
 
-The resulting model = lowbwt ~ Gestation + smoker + Gestation:smoker
+The resulting model = lowbwt \~ Gestation + smoker + Gestation:smoker
 
 ```{r}
 # Assuming the model is stored in model_g
@@ -397,6 +397,7 @@ print(probabilities)
 # No need to convert to odds if you're interested in probabilities
 
 ```
+
 For babies born at 40 weeks of gestation, the predicted probability of low birth weight is 2.62% for non-smokers and 10.51% for smokers, highlighting the significant impact of maternal smoking on birth weight outcomes. This underscores the importance of smoking cessation interventions during pregnancy to mitigate the risk of low birth weight.
 
 ### i)
@@ -406,7 +407,8 @@ contingency_table <- table(birthweight_data$lowbwt, birthweight_data$smoker)
 chi_squared_result <- chisq.test(contingency_table)
 print(chi_squared_result)
 ```
-This approach is not wrong, however as mentioned before, the sample sizes in some of the experimental units are not large enough <5. Making the chi-squared results unreliable and incorrect. If we would have a larger sample, chi-squared would work. The advantage of chi-squared is its simplicity, however nuances such as the interaction we found between 'smoking' and 'gestation' would not have been found by only using chi-squared. So it has the caveat of possibly overlooking important nuances.
+
+This approach is not wrong, however as mentioned before, the sample sizes in some of the experimental units are not large enough \<5. Making the chi-squared results unreliable and incorrect. If we would have a larger sample, chi-squared would work. The advantage of chi-squared is its simplicity, however nuances such as the interaction we found between 'smoking' and 'gestation' would not have been found by only using chi-squared. So it has the caveat of possibly overlooking important nuances.
 
 # Exercise 3
 
@@ -433,7 +435,45 @@ awards_data=read.table(file="awards.txt",header=TRUE)
 ## TJ)
 
 ### a)
+```{r}
+summary(awards_data)
+pairs(awards_data)
 
+awardsglm <- glm(num_awards ~ factor(prog), family="poisson", data=awards_data)
+summary(awardsglm)
+predict(awardsglm, newdata=data.frame(prog=c(1, 2, 3)), type="response")
+```
 ### b)
 
+The Kruskal-Wallis test can be used in this context because it is a non-parametric method that does not assume normal distribution of the data, making it suitable for comparing medians of the number of awards across different types of educational programs.
+
+```{r}
+# Kruskal-Wallis test
+kw_test_result <- kruskal.test(num_awards ~ prog, data = awards_data)
+
+# Output the result
+kw_test_result
+```
 ### c)
+```{r}
+awardsmath <- glm(num_awards ~ factor(prog)*math, family="poisson", data=awards_data)
+summary(awardsmath)
+
+
+# Assuming your fitted model is stored in `model` and includes prog, math, and their interaction
+# Create a new data frame for prediction with prog as numeric 1, 2, 3
+new_data <- data.frame(prog = factor(c(1, 2, 3), levels = c(1, 2, 3)),
+                       math = 56)
+
+# Predict the number of awards using the model
+predictions <- predict(awardsmath, newdata=new_data, type="response")
+
+# Add predictions to the new_data dataframe for easy viewing
+new_data$predicted_awards <- predictions
+
+# View the predictions
+print(new_data)
+
+
+```
+No significant results were found, so its hard to say. But program 3 has the highest estimate, but a negative interaction term with math???
