@@ -30,6 +30,8 @@ fruitfly_data$loglongevity <- log(fruitfly_data$longevity)
 
 ### a)
 
+Even though not normally distributed, we asked the TA and he said that we should do anova.
+
 ```{r}
 boxplot(loglongevity ~ activity, data = fruitfly_data, 
         xlab = "Activity Group", ylab = "Log Longevity",
@@ -45,6 +47,7 @@ We perform ANOVA to test whether sexual activity influences longevity.
 ```{r}
 fruitfly_data$activity=factor(fruitfly_data$activity)
 longaov <- lm(loglongevity ~ activity, data = fruitfly_data); anova(longaov)
+summary(longaov)
 ```
 
 Since we get a p-value of 1.8e-7, we reject $H_0$ and conclude that sexual activity influences longevity.
@@ -64,7 +67,7 @@ From the values you can see that the mean of "high" is a lot lower than the one 
 -   $H_1$: The mean longevity is not the same across all groups.
 
 ```{r}
-longaov <- lm(loglongevity ~ thorax + activity, data = fruitfly_data)
+longaov <- lm(longevity ~ thorax + activity, data = fruitfly_data)
 anova(longaov)
 ```
 
@@ -79,10 +82,15 @@ Groups isolated and low increase longevity, high decreases.
 ```{r}
 # Not sure about this...
 avg_thorax_length <- mean(fruitfly_data$thorax)
+avg_thorax_length
 
 estimated_longevity_isolated <- (-67.37) + 20.07 + (132.62 * avg_thorax_length)
 estimated_longevity_low <- (-67.37) + 13.05 + (132.62 * avg_thorax_length)
 estimated_longevity_high <- (-67.37) + (132.62 * avg_thorax_length)
+
+estimated_longevity_isolated
+estimated_longevity_low
+estimated_longevity_high
 ```
 
 ### c)
@@ -112,7 +120,7 @@ Perform ANCOVA.
 -   $H_1$: There is an interaction between activity and thorax.
 
 ```{r}
-longaov = lm(loglongevity ~ activity*thorax, data = fruitfly_data)
+longaov = lm(loglongevity ~ thorax*activity, data = fruitfly_data)
 summary(longaov)
 ```
 
@@ -201,8 +209,6 @@ summary(reduced_bw_lm)
 
 Order of removal: fage mheight fedyrs fnocig mnocig Length fheight mage mppwt
 
-TODO check assumptions
-
 ### c)
 
 ```{r}
@@ -229,8 +235,8 @@ prediction_intervals
 ### d)
 
 ```{r}
+set.seed(123)
 library(glmnet)
-set.seed(3)
 x=as.matrix(birthweight_data[,-3]) #remove the response variable
 y=as.double(as.matrix(birthweight_data[,3])) #only the response variable
 train=sample(1:nrow(x),0.67*nrow(x)) # train by using 2/3 of the data
@@ -242,12 +248,15 @@ plot(lasso.mod,label=T,xvar="lambda") #have a look at the lasso path
 plot(cv.lasso) # the best lambda by cross-validation
 plot(cv.lasso$glmnet.fit,xvar="lambda",label=T)
 lambda.min=cv.lasso$lambda.min; lambda.1se=cv.lasso$lambda.1se
-coef(lasso.mod,s=cv.lasso$lambda.min) #beta’s for the best lambda
-y.pred=predict(lasso.mod,s=lambda.min,newx=x.test) #predict for test
+coef(lasso.mod,s=cv.lasso$lambda.1se) #beta’s for the best lambda
+y.pred=predict(lasso.mod,s=lambda.1se,newx=x.test) #predict for test
 mse.lasso=mean((y.test-y.pred)^2) #mse for the predicted test rows
+new_model = lm(Birthweight ~ Length + Headcirc + Gestation + lowbwt, data=birthweight_data)
+summary(new_model)
+summary(reduced_bw_lm)
 ```
 
-Headcirc + Gestation + mppwt + lowbwt + mage35
+Upon insepction the summary tables, although the LASSO model has a slightly higher R-squared value, we prefer the step-down model, because the two added variables in the LASSO model are insignificant and it does not make sense to add them in respect to complexity.
 
 ### e)
 
@@ -268,6 +277,7 @@ boxplot(Birthweight ~ mage35, data=birthweight_data, main="Birthweight by Mother
 ```{r}
 # do we need factors? mage35 for example?
 lr_model = glm(lowbwt ~ Gestation + smoker + mage35, family = binomial, data = birthweight_data)
+drop1()
 
 summary(lr_model)
 ```
@@ -293,12 +303,12 @@ Both interactions seem to be statistically insignificant, therefore, model from 
 ### h)
 
 ```{r}
-# ChatGPT generated
+lr_model_no_age = glm(lowbwt ~ Gestation + smoker, family = binomial, data = birthweight_data)
 # Define the predictor values for each combination
-predictor_values <- expand.grid(smoker = c(0, 1), mage35 = c(0, 1), Gestation = 40)
+predictor_values <- expand.grid(smoker = c(0, 1), Gestation = 40)
 
 # Predict the probability of low birth weight for each combination
-predicted_probabilities <- predict(lr_model, newdata = predictor_values, type = "response")
+predicted_probabilities <- predict(lr_model_no_age, newdata = predictor_values, type = "response")
 
 # Combine predictor values and predicted probabilities into a data frame
 results <- cbind(predictor_values, Probability_Low_Birthweight = predicted_probabilities)
@@ -307,6 +317,8 @@ results <- cbind(predictor_values, Probability_Low_Birthweight = predicted_proba
 print(results)
 
 ```
+
+\<0.001
 
 ### i)
 
@@ -460,8 +472,10 @@ awards_data=read.table(file="awards.txt",header=TRUE)
 
 ```{r}
 awards_data$prog <- factor(awards_data$prog)
+awards_data$prog <- relevel(awards_data$prog, ref="1")
 poisson_model=glm(num_awards~prog,family=poisson,data=awards_data)
 summary(poisson_model)
+
 
 newdata = data.frame(prog = factor(c(1, 2, 3)))
 predicted_awards = predict(poisson_model, newdata = newdata, type = "response")
@@ -476,11 +490,12 @@ kruskal_test <- kruskal.test(num_awards ~ prog, data = awards_data)
 print(kruskal_test)
 ```
 
-We reject $H_0$ as pvalue is 0.005. However, we do not know which program type is the best.
+We reject $H_0$ as p-value is 0.005. However, we do not know which program type is the best.
 
 ### c)
 
 ```{r}
+awards_data$prog <- relevel(awards_data$prog, ref="1")
 poisson_model=glm(num_awards~prog*math,family=poisson,data=awards_data)
 summary(poisson_model)
 
