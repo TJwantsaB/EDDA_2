@@ -1,0 +1,537 @@
+---
+title: "Assignment 2"
+author: "Lukas Unruh, Teije Langelaan, Gidon Quint"
+date: "`r format(Sys.Date(), '%d %B, %Y')`"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(333)
+library(lme4)
+library(Matrix)
+library(carData)
+library(ggplot2)
+options(digits=3)
+```
+
+# Exercise 1
+
+```{r}
+fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
+```
+
+## Lukas)
+
+### a)
+
+### b)
+
+### c)
+
+### d)
+
+### e)
+
+## Gid)
+
+```{r}
+fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
+```
+
+### a)
+
+```{r}
+head(fruitfly_data)
+fruitfly_data$loglongevity = log(fruitfly_data$longevity)
+head(fruitfly_data)
+
+par(mfrow = c(3, 2))
+
+for (activity_level in unique(fruitfly_data$activity)) {
+  data_subset = subset(fruitfly_data, activity == activity_level)$loglongevity
+  
+  qqnorm(data_subset, main = paste("Q-Q plot -", activity_level))
+  qqline(data_subset)
+  
+  hist(data_subset, main = paste("Histogram -", activity_level), xlab = "Log(Longevity)", breaks = 20)
+  
+  shapiro_test = shapiro.test(data_subset)
+  cat("Shapiro-Wilk test for", activity_level, "activity: p-value =", shapiro_test$p.value, "\n")
+}
+
+par(mfrow = c(1, 1))
+boxplot(loglongevity ~ activity, data = fruitfly_data, main = "Log(Longevity) by Activity Level", xlab = "Activity Level", ylab = "Log(Longevity)")
+
+kruskal.test(loglongevity ~ activity, data = fruitfly_data)
+
+aggregate(loglongevity ~ activity, data = fruitfly_data, FUN = median)
+
+```
+
+The aggregate function's output shows the median log-longevity for each activity group: isolated flies have the highest median log-longevity (4.13), followed by those with low sexual activity (4.03), and flies with high sexual activity have the lowest median log-longevity (3.69). This suggests that increased sexual activity may be associated with decreased longevity in fruit flies
+
+### b)
+
+I do linear regression although we would need normality. However because we use the loglongevity the use of linear regression is fine
+
+```{r}
+multireg_model = lm(loglongevity ~ activity + thorax, data = fruitfly_data)
+anova(multireg_model)
+summary(multireg_model)
+
+qqnorm(residuals(multireg_model))
+qqline(residuals(multireg_model))
+plot(fitted(multireg_model), residuals(multireg_model))
+abline(h = 0)
+```
+
+This shows that the residuals deviade from normality. Especially at the tails. The plot of fitted values against residuals does not show a clear pattern, which is good as it suggests homoscedasticity (constant variance of the residuals across the range of fitted values). There is no apparent funnel shape or systematic pattern, which is indicative of potential issues with variance.
+
+because the Q-Q plot does show some deviation from normality, it could be beneficial to either transform the data to achieve normality or use a robust regression method that is less sensitive to non-normality.
+
+activityisolated and activitylow are both positive, with isolated having a larger coefficient than low. Showing that compared to high sexual activity, being isolated is associated with an increase in log-longevity (which translates to an increase in actual longevity), while low sexual activity is also associated with an increase in log-longevity but to a lesser extent than isolation. Therefore, sexual activity appears to decrease longevity compared to no activity, with higher activity decreasing it more.
+
+```{r}
+
+average_thorax = mean(fruitfly_data$thorax)
+
+new_data = expand.grid(activity = unique(fruitfly_data$activity), thorax = average_thorax)
+
+new_data$predicted_loglongevity = predict(multireg_model, newdata = new_data)
+
+new_data$predicted_longevity = exp(new_data$predicted_loglongevity)
+
+print(new_data)
+```
+
+### c)
+
+```{r}
+ggplot(fruitfly_data, aes(x = thorax, y = loglongevity, color = activity)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Relationship between Thorax Length and Log(Longevity) by Activity Group",
+       x = "Thorax Length",
+       y = "Log(Longevity)")
+
+# added interaction between thorax and activity for regression model
+interaction_model = lm(loglongevity ~ thorax * activity, data = fruitfly_data)
+summary(interaction_model)
+
+
+qqnorm(residuals(interaction_model))
+qqline(residuals(interaction_model))
+
+plot(fitted(interaction_model), residuals(interaction_model))
+abline(h = 0)
+
+```
+
+The scatter plot with regression lines shows a positive relationship between thorax length and log longevity. The slopes of the lines appear to differ between groups, suggesting that the rate of increase in longevity with thorax length may vary by sexual activity level.
+
+The regression analysis suggests that thorax length positively affects longevity in fruit flies, with the effect being less for flies with higher sexual activity. The interaction between thorax length and isolated sexual activity is marginally (0.55) significant, indicating a possible difference in this effect between flies with no sexual activity and those with high sexual activity.
+
+GPT GENERATED
+
+The regression analysis conducted so far has shown that there is a significant interaction between thorax length and the isolated group of fruit flies, suggesting that the dependence of longevity on thorax length differs when flies are kept in isolation compared to those with high sexual activity. For flies with low sexual activity, however, the interaction was not statistically significant, indicating that their longevity dependence on thorax length does not differ much from flies with high sexual activity. This suggests that the influence of thorax length on longevity is not consistent across all conditions of sexual activity.
+
+### d)
+
+Model c) has a slightly higher adjusted R-squared value (0.709 compared to 0.717) and these additional explanatory variables are significant (as seen in the interaction term with p = 0.055), this suggests that model c) is potentially better at explaining the variability in the response, despite being more complex. Another point worth mentioning is that thorax length allows for a more nuanced interpretation of the data, acknowledging the biological reality that physical traits can affect longevity. However neither is necessarily "wrong".
+
+### e)
+
+```{r}
+
+# this plot as it is done in the lecture but there are probably better ways to do it
+plot(longevity ~ thorax, data = fruitfly_data, pch = as.character(fruitfly_data$activity),
+     main = "Longevity vs Thorax Length by Activity Level",
+     xlab = "Thorax Length", ylab = "Longevity")
+
+
+
+fruitfly_data$activity = as.factor(fruitfly_data$activity)
+
+ancova_model = lm(longevity ~ activity + thorax, data = fruitfly_data)
+
+summary(ancova_model)
+
+anova(ancova_model)
+
+drop1(ancova_model, test = "F")
+
+
+
+```
+
+The ANCOVA with raw longevity data has a slightly lower adjusted R-squared compared to the model with log-transformed longevity, which suggests that the log transformation may provide a better fit. The choice of using the log of longevity as the response variable likely helped to stabilize variance and linearize the relationship between predictors and longevity, making it a wise choice for the analysis.
+
+## TJ)
+
+### a)
+
+### b)
+
+### C)
+```{r}
+# Define colors for each activity level
+activity_colors <- setNames(c("green", "blue", "red"), c("isolated", "low", "high"))
+
+# Base plot with points. No points will be plotted here because 'pch' is set to NA.
+plot(loglongevity ~ thorax, data = fruitfly_data, pch = NA,
+     main = "Log(Longevity) by Thorax Length and Activity Level",
+     xlab = "Thorax Length", ylab = "Log(Longevity)")
+
+# Loop through each activity level to plot points
+for (activity_level in names(activity_colors)) {
+  # Subset the data for the current activity level
+  data_subset <- subset(fruitfly_data, activity == activity_level)
+  points(data_subset$thorax, data_subset$loglongevity, col = activity_colors[activity_level], pch = 16)
+}
+
+# Loop through each activity level and draw regression lines with specified color
+for (activity_level in names(activity_colors)) {
+  # Subset the data for the current activity level
+  data_subset <- subset(fruitfly_data, activity == activity_level)
+  # Check if the subset is not empty to avoid the error
+  if(nrow(data_subset) > 0) {
+    # Fit the linear model
+    fit <- lm(loglongevity ~ thorax, data = data_subset)
+    # Generate new data for plotting the line
+    new_thorax <- seq(min(data_subset$thorax), max(data_subset$thorax), length.out = 100)
+    preds <- predict(fit, newdata = data.frame(thorax = new_thorax))
+    # Draw the line
+    lines(new_thorax, preds, col = activity_colors[activity_level], lwd = 2)
+  }
+}
+
+# Add a legend to the plot to identify the colors
+legend("bottomright", legend = names(activity_colors), 
+       col = activity_colors, pch = 16, lty = 1, cex = 0.8,
+       title = "Activity Level")
+
+``` 
+### d)
+
+model without thorax R-squared = 0.332, model with thorax R-squard = 0.709. So we should go for model B, also because model B is model A with an added significant variable namely thorax.
+
+### E)
+```{r}
+# Define colors for each activity level
+activity_colors <- setNames(c("green", "blue", "red"), c("isolated", "low", "high"))
+
+# Plot the base layer without points to set up axes, labels, and title
+plot(longevity ~ thorax, data = fruitfly_data, type = "n",
+     main = "Longevity vs Thorax Length by Activity Level",
+     xlab = "Thorax Length", ylab = "Longevity")
+
+# Loop through each activity level and plot with the specified color
+for (activity_level in names(activity_colors)) {
+  data_subset <- subset(fruitfly_data, activity == activity_level)
+  points(data_subset$thorax, data_subset$longevity, col = activity_colors[activity_level], pch = 16)  # Using circles (pch=16) for all
+}
+
+# Add a legend with a title
+legend("topright", # Adjust this position as needed
+       legend = names(activity_colors),
+       fill = activity_colors,  # Using 'fill' here to show colored boxes in the legend
+       title = "Activity Level")
+
+```
+# Exercise 2
+
+```{r}
+birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
+
+```
+
+In our data set we have multiple continuous and discrete variables. However, for the model we do not have to state that discrete variables are factors as all of them only have 2 levels (no = 0 and yes = 1). \## Lukas)
+## Lukas
+### a)
+
+### b)
+
+### c)
+
+### d)
+
+### e)
+
+### f)
+
+### g)
+
+### h)
+
+### i)
+
+## Gid)
+
+### a)
+
+### b)
+
+### c)
+
+### d)
+
+### e)
+
+### f)
+
+### g)
+
+### h)
+
+### i)
+
+## TJ)
+
+### A)
+
+```{r}
+# Assuming birthweight_data is your dataset
+summary(birthweight_data)
+
+# Fit a linear model
+TJ_BW <- lm(Birthweight ~ Length + Headcirc + Gestation + mage + mnocig + mheight + mppwt + fage + fedyrs + fnocig + fheight, data=birthweight_data)
+
+# Plot diagnostics for influential points
+par(mfrow=c(2,2))
+plot(TJ_BW, which=1:4) # Plots for residuals, leverage, etc.
+
+round(cooks.distance(TJ_BW),2)
+
+
+```
+
+Upon inspection of plots and Cook's distances, we conclude that there are no influence points in the data set, as no observation has a Cook's distance greater than 1.
+
+```{r}
+predictors <- birthweight_data[, c("Length", "Headcirc", "Gestation", "mage", "mnocig", "mheight", "mppwt", "fage", "fedyrs", "fnocig", "fheight")]
+print(cor(predictors))
+library(car)
+vif_values <- vif(TJ_BW)
+print(vif_values)
+```
+
+Upon inspection of correlation matrix, we note that variables mage and fage appear to be highly correlated (0.806), however their VIF values are under 5, therefore we conclude that the model has no problem of collinearity.
+
+### b)
+
+```{r}
+summary(TJ_BW)
+TJ_BW_reduced <- step(TJ_BW, direction = "backward")
+summary(TJ_BW_reduced)
+```
+
+Using the step-down approach we arrived at the following model: Birthweight \~ Length + Headcirc + Gestation + mage + mppwt + fheight with R-squared: 0.757
+
+```{r}
+plot(TJ_BW_reduced, which = 1)
+
+qqnorm(residuals(TJ_BW_reduced))
+qqline(residuals(TJ_BW_reduced))
+shapiro.test(residuals(TJ_BW_reduced))
+```
+
+In the residuals vs fitted plot, the pattern from 3.0 to 3.5 could hint at non-linearity, adding polynomial or interaction terms might improve fit. Upon further inspection of the QQ-plot and shapiro-Wilk test we conclude that the assumption of normally distributed residuals is not met.
+
+### c)
+
+```{r}
+# Calculate the average values for the predictors
+avg_data <- data.frame(
+  Length = mean(birthweight_data$Length, na.rm = TRUE),
+  Headcirc = mean(birthweight_data$Headcirc, na.rm = TRUE),
+  Gestation = mean(birthweight_data$Gestation, na.rm = TRUE),
+  mage = mean(birthweight_data$mage, na.rm = TRUE),
+  mppwt = mean(birthweight_data$mppwt, na.rm = TRUE),
+  fheight = mean(birthweight_data$fheight, na.rm = TRUE)
+)
+
+# Assuming your model is named 'TJ_BW_reduced' and is already fitted with the correct formula
+# Predict the Birthweight for the average values with 95% confidence interval
+confidence_interval <- predict(TJ_BW_reduced, newdata = avg_data, interval = "confidence", level = 0.95)
+
+# Predict the Birthweight for the average values with 95% prediction interval
+prediction_interval <- predict(TJ_BW_reduced, newdata = avg_data, interval = "prediction", level = 0.95)
+
+# View the results
+confidence_interval
+prediction_interval
+```
+
+### d)
+
+```{r}
+library(glmnet)
+set.seed(3)
+x=as.matrix(birthweight_data[,-3]) #remove the response variable
+y=as.double(as.matrix(birthweight_data[,3])) #only the response variable
+train=sample(1:nrow(x),0.67*nrow(x)) # train by using 2/3 of the data
+x.train=x[train,]; y.train=y[train] # data to train
+x.test=x[-train,]; y.test=y[-train] # data to test the prediction quality
+lasso.mod=glmnet(x.train,y.train,alpha=1)
+cv.lasso=cv.glmnet(x.train,y.train,alpha=1,type.measure="mse")
+plot(lasso.mod,label=T,xvar="lambda") #have a look at the lasso path
+plot(cv.lasso) # the best lambda by cross-validation
+lambda.min=cv.lasso$lambda.min; lambda.1se=cv.lasso$lambda.1se
+coef(lasso.mod,s=cv.lasso$lambda.1se) #beta’s for the best lambda
+y.pred=predict(lasso.mod,s=lambda.1se,newx=x.test) #predict for test
+mse.lasso=mean((y.test-y.pred)^2) #mse for the predicted test rows
+```
+
+Lasso model: Birthweight \~ Length + Headcirc + Gestation + lowbwt Step down: Birthweight \~ Length + Headcirc + Gestation + mage + mppwt + fheight
+
+The Lasso model and the step-down method both identify Length, Head Circumference, and Gestation as significant predictors of Birthweight, indicating their critical role. The Lasso model is more parsemonious, using two fewer variables. It uniquely includes lowbwt, a binary variable distinguishing between birth weights below and above 6 pounds, which the step-down model omits. Conversely, the step-down model retains mage, mppwt, and fheight, suggesting these factors may have some predictive value not captured by the Lasso model, likely due to its penalty on model complexity that excludes less impactful variables.
+
+### e)
+
+```{r}
+boxplot(birthweight_data$Birthweight ~ birthweight_data$smoker, main = "Birthweight by Smoking Status", xlab = "Smoker", ylab = "Birthweight")
+boxplot(birthweight_data$Birthweight ~ birthweight_data$mage35, main = "Birthweight by Mother's Age", xlab = "Mother aged 35+", ylab = "Birthweight")
+barplot(table(birthweight_data$lowbwt, birthweight_data$smoker), beside = TRUE, main = "Low Birthweight by Smoking Status", xlab = "Smoker", ylab = "Count", names.arg = c("No", "Yes"), legend = TRUE)
+legend("topright", legend = c("No", "Yes"), 
+       fill = c("black", "grey"), 
+       title = "Low birthweight")
+barplot(table(birthweight_data$lowbwt, birthweight_data$mage35), beside = TRUE, main = "Low Birthweight by Mother's Age", xlab = "Mother aged 35+", ylab = "Count", names.arg = c("No", "Yes"), legend = TRUE)
+legend("topright", legend = c("No", "Yes"), 
+       fill = c("black", "grey"), 
+       title = "Low birthweight")
+table(birthweight_data$smoker, birthweight_data$lowbwt)
+table(birthweight_data$mage35, birthweight_data$lowbwt)
+
+
+```
+
+The boxplot do not show a clear difference in birthweight resulting from the varibales 'smoker' and 'mage35'. Both the bar graph, and contingency table do suggests a potential influence of smoking on low birthweight. The limited sample sizes \<5 for some experimental units, hinder us in getting reliable chi-squared results on these possible effects.
+
+### f)
+
+```{r}
+TJ_LOWBWT <- glm(lowbwt ~ Gestation + mage35 + smoker, data = birthweight_data, family = binomial)
+drop1(TJ_LOWBWT, test="Chisq")
+TJ_LOWBWT2 <- glm(lowbwt ~ Gestation + smoker, data = birthweight_data, family = binomial)
+summary(TJ_LOWBWT2)
+exp(coef(TJ_LOWBWT2))
+
+```
+Certainly! Using the drop1 function on our model with 'Gestation', 'mage35', and 'smoker', we find that 'mage35' (p-value = 0.941) does not significantly affect the risk of low birth weight (lowbwt). From our analysis, the odds ratio for 'Gestation' is 0.230, indicating that for each additional week of gestation, the odds of lowbwt decrease by about 77%. For 'smoking', the odds ratio is 241, suggesting that smoking during pregnancy increases the odds of lowbwt by 241 times. These results underscore the protective effect of longer gestation and the significant risk posed by smoking on birth weight.
+
+### g)
+
+```{r}
+# Model with Gestation * smoker interaction
+TJ_LOWBWT_GestSmoker <- glm(lowbwt ~ mage35 + Gestation * smoker, data = birthweight_data, family="binomial")
+exp(coef(TJ_LOWBWT_GestSmoker))
+
+# Model with Gestation * mage35 interaction
+TJ_LOWBWT_GestMage35 <- glm(lowbwt ~ smoker + Gestation * mage35, data = birthweight_data, family="binomial")
+summary(TJ_LOWBWT_GestMage35))
+```
+
+Both
+
+### h)
+
+The resulting model = lowbwt \~ Gestation + smoker + Gestation:smoker
+
+```{r}
+# Assuming the model is stored in model_g
+model_g <- glm(lowbwt ~ Gestation + smoker, data = birthweight_data, family="binomial")
+
+# New data frame for prediction at 40 weeks
+new_data <- data.frame(Gestation = c(40, 40),
+                       smoker = c(0, 1))
+probabilities <- predict(model_g, newdata = new_data, type = "response")
+print(probabilities)
+
+
+
+```
+
+For babies born at 40 weeks of gestation, the predicted probability of low birth weight is <0.001% for non-smokers and 0.02% for smokers, highlighting the significant impact of maternal smoking on birth weight outcomes. This underscores the importance of smoking cessation interventions during pregnancy to mitigate the risk of low birth weight.
+
+### i)
+
+```{r}
+contingency_table <- table(birthweight_data$lowbwt, birthweight_data$smoker)
+chi_squared_result <- chisq.test(contingency_table)
+print(chi_squared_result)
+```
+
+This approach is not wrong, however as mentioned before, the sample sizes in some of the experimental units are not large enough \<5. Making the chi-squared results unreliable and incorrect. If we would have a larger sample, chi-squared would work. The advantage of chi-squared is its simplicity, however due to its simplicity it has possibility overlooking important nuances.
+
+# Exercise 3
+
+```{r}
+awards_data=read.table(file="awards.txt",header=TRUE)
+```
+
+## Lukas)
+
+### a)
+
+### b)
+
+### c)
+
+## Gid)
+
+### a)
+
+### b)
+
+### c)
+
+## TJ)
+
+### a)
+```{r}
+summary(awards_data)
+pairs(awards_data)
+
+awardsglm <- glm(num_awards ~ factor(prog), family="poisson", data=awards_data)
+summary(awardsglm)
+predict(awardsglm, newdata=data.frame(prog=c(1, 2, 3)), type="response")
+```
+### b)
+
+The Kruskal-Wallis test can be used in this context because it is a non-parametric method that does not assume normal distribution of the data, making it suitable for comparing medians of the number of awards across different types of educational programs.
+
+```{r}
+# Kruskal-Wallis test
+kw_test_result <- kruskal.test(num_awards ~ prog, data = awards_data)
+
+# Output the result
+kw_test_result
+```
+### c)
+```{r}
+awardsinteractionmath <- glm(num_awards ~ factor(prog)*math, family="poisson", data=awards_data)
+summary(awardsinteractionmath)
+
+awardsmath <- glm(num_awards ~ factor(prog)+math, family="poisson", data=awards_data)
+summary(awardsmath)
+
+# Assuming your fitted model is stored in `model` and includes prog, math, and their interaction
+# Create a new data frame for prediction with prog as numeric 1, 2, 3
+new_data <- data.frame(prog = factor(c(1, 2, 3), levels = c(1, 2, 3)),
+                       math = 56)
+
+# Predict the number of awards using the model
+predictions <- predict(awardsmath, newdata=new_data, type="response")
+
+# Add predictions to the new_data dataframe for easy viewing
+new_data$predicted_awards <- predictions
+
+# View the predictions
+print(new_data)
+
+
+```
+No significant interaction results were found. Looking at the additive model with math included, we conclude that program 3 is the best with a predicted amount of awards of 1.213.
