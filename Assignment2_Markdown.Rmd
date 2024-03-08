@@ -68,6 +68,8 @@ kruskal.test(loglongevity ~ activity, data = fruitfly_data)
 
 aggregate(loglongevity ~ activity, data = fruitfly_data, FUN = median)
 
+
+# Do residuals plot do ANOVA We asked ta and not normal distributed. 
 ```
 
 The aggregate function's output shows the median log-longevity for each activity group: isolated flies have the highest median log-longevity (4.13), followed by those with low sexual activity (4.03), and flies with high sexual activity have the lowest median log-longevity (3.69). This suggests that increased sexual activity may be associated with decreased longevity in fruit flies
@@ -145,6 +147,8 @@ Model c) has a slightly higher adjusted R-squared value (0.709 compared to 0.717
 Normally we would say that model b) is better because it has about the same R2 and it has less variables however thorax!
 
 
+If something is significant it doesnt make sense do delete it
+
 ### e)
 
 ```{r}
@@ -165,8 +169,6 @@ summary(ancova_model)
 anova(ancova_model)
 
 drop1(ancova_model, test = "F")
-
-
 
 ```
 
@@ -256,7 +258,7 @@ The correlation and VIF analysis for the Birthweight dataset indicates moderate 
 #### Question: Shouldnt we delete the coulomn lowbwt? As that should always have an effect on birthweight
 
 ```{r}
-reduced_model <- step(full_model, direction="backward")
+reduced_model = step(full_model, direction="backward")
 
 summary(reduced_model)
 ```
@@ -362,7 +364,7 @@ print(mse_lasso)
 ##### I am sorry I really looked but didnt know how to compare or comment. I am not too sure what to do here
 
 ### e)
-
+TA do chisquare test
 ```{r}
 filtered_data = birthweight_data[, c("lowbwt", "Gestation", "smoker", "mage35")]
 
@@ -386,6 +388,8 @@ However as seen in the tables, some combinations of low birth weight and smoking
 ```{r}
 logistic_model = glm(lowbwt ~ Gestation + smoker + mage35, family = binomial, data = birthweight_data)
 
+# add drop1 and remove mage35 and smoker categorical drop 1 chi score
+
 summary(logistic_model)
 ```
 
@@ -396,11 +400,12 @@ The logistic regression results show that increased gestation significantly decr
 ```{r}
 model_gestation_smoker = glm(lowbwt ~ Gestation * smoker, data = birthweight_data, family = binomial)
 
-anova(model_gestation_smoker, test = "Chisq")
+anova(model_gestation_smoker)
+summary(model_gestation_smoker)
 
 model_gestation_mage35 = glm(lowbwt ~ Gestation * mage35, data = birthweight_data, family = binomial)
-
-anova(model_gestation_mage35, test = "Chisq")
+summary(model_gestation_mage35)
+anova(model_gestation_mage35)
 
 ```
 
@@ -408,17 +413,15 @@ Note for later this was in the slide: H0 : β1 = β2 = β3 = β4 is not rejected
 
 For both the smoker and mothers age above 35 we do not reject the H0 as the interactions are both not significant. 
 
-
-##### Regarding the choosing of the correct model I dont know sorry
+##### We see that there is no interaction so we choose the model from f) (Heard from the TA)
 
 ### h)
 
 ```{r}
-new_data <- data.frame(Gestation = rep(40, 4),
-                       smoker = c(0, 1, 0, 1),
-                       mage35 = c(0, 0, 1, 1))
+new_data = data.frame(Gestation = rep(40, 4),
+                       smoker = c(0, 1, 0, 1))
 
-probabilities <- predict(logistic_model, newdata = new_data, type = "response")
+probabilities = predict(logistic_model, newdata = new_data, type = "response")
 
 print(probabilities)
 ```
@@ -647,7 +650,7 @@ head(awards_data)
 ### a)
 
 ```{r}
-awards_data$prog <- factor(awards_data$prog)
+awards_data$prog = factor(awards_data$prog)
 model = glm(num_awards ~ prog, family = poisson(link = "log"), data = awards_data)
 summary(model)
 
@@ -657,8 +660,10 @@ predicted_awards = predict(model, newdata = new_data, type = "response")
 print(predicted_awards)
 ``` 
 
-The program type general is best for the number of awards. 
+The program type "general" is best for the number of awards. 
 
+
+### Note to myself (Gid) Intercept is 0 means the intercept is not 1
 ### b)
 
 ```{r}
@@ -672,7 +677,7 @@ However we can not infer which program type is the best for the number of awards
 ### c)
 
 ``` {r}
-model_prog_math = glm(num_awards ~ prog * math, family = poisson(link = "log"), data = awards_data)
+model_prog_math = glm(num_awards ~ prog + math, family = poisson, data = awards_data)
 
 summary(model_prog_math)
 
