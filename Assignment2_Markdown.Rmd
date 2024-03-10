@@ -48,7 +48,7 @@ head(fruitfly_data)
 fruitfly_data$loglongevity = log(fruitfly_data$longevity)
 head(fruitfly_data)
 
-par(mfrow = c(2, 3))
+par(mfrow = c(3, 2))
 
 for (activity_level in unique(fruitfly_data$activity)) {
   data_subset = subset(fruitfly_data, activity == activity_level)$loglongevity
@@ -62,6 +62,7 @@ for (activity_level in unique(fruitfly_data$activity)) {
   cat("Shapiro-Wilk test for", activity_level, "activity: p-value =", shapiro_test$p.value, "\n")
 }
 
+par(mfrow = c(1, 1))
 boxplot(loglongevity ~ activity, data = fruitfly_data, main = "Log(Longevity) by Activity Level", xlab = "Activity Level", ylab = "Log(Longevity)")
 
 kruskal.test(loglongevity ~ activity, data = fruitfly_data)
@@ -80,6 +81,7 @@ I do linear regression although we would need normality. However because we use 
 
 ```{r}
 multireg_model = lm(loglongevity ~ activity + thorax, data = fruitfly_data)
+anova(multireg_model)
 summary(multireg_model)
 
 qqnorm(residuals(multireg_model))
@@ -105,8 +107,6 @@ new_data$predicted_loglongevity = predict(multireg_model, newdata = new_data)
 new_data$predicted_longevity = exp(new_data$predicted_loglongevity)
 
 print(new_data)
-
-
 ```
 
 ### c)
@@ -180,12 +180,72 @@ The ANCOVA with raw longevity data has a slightly lower adjusted R-squared compa
 
 ### b)
 
-### c)
+### C)
+```{r}
+# Define colors for each activity level
+activity_colors <- setNames(c("green", "blue", "red"), c("isolated", "low", "high"))
 
+# Base plot with points. No points will be plotted here because 'pch' is set to NA.
+plot(loglongevity ~ thorax, data = fruitfly_data, pch = NA,
+     main = "Log(Longevity) by Thorax Length and Activity Level",
+     xlab = "Thorax Length", ylab = "Log(Longevity)")
+
+# Loop through each activity level to plot points
+for (activity_level in names(activity_colors)) {
+  # Subset the data for the current activity level
+  data_subset <- subset(fruitfly_data, activity == activity_level)
+  points(data_subset$thorax, data_subset$loglongevity, col = activity_colors[activity_level], pch = 16)
+}
+
+# Loop through each activity level and draw regression lines with specified color
+for (activity_level in names(activity_colors)) {
+  # Subset the data for the current activity level
+  data_subset <- subset(fruitfly_data, activity == activity_level)
+  # Check if the subset is not empty to avoid the error
+  if(nrow(data_subset) > 0) {
+    # Fit the linear model
+    fit <- lm(loglongevity ~ thorax, data = data_subset)
+    # Generate new data for plotting the line
+    new_thorax <- seq(min(data_subset$thorax), max(data_subset$thorax), length.out = 100)
+    preds <- predict(fit, newdata = data.frame(thorax = new_thorax))
+    # Draw the line
+    lines(new_thorax, preds, col = activity_colors[activity_level], lwd = 2)
+  }
+}
+
+# Add a legend to the plot to identify the colors
+legend("bottomright", legend = names(activity_colors), 
+       col = activity_colors, pch = 16, lty = 1, cex = 0.8,
+       title = "Activity Level")
+
+``` 
 ### d)
 
-### e)
+model without thorax R-squared = 0.332, model with thorax R-squard = 0.709. So we should go for model B, also because model B is model A with an added significant variable namely thorax.
 
+### E)
+```{r}
+# Define colors for each activity level
+activity_colors <- setNames(c("green", "blue", "red"), c("isolated", "low", "high"))
+
+# Plot the base layer without points to set up axes, labels, and title
+plot(longevity ~ thorax, data = fruitfly_data, type = "n",
+     main = "Longevity vs Thorax Length by Activity Level",
+     xlab = "Thorax Length", ylab = "Longevity")
+
+# Loop through each activity level and plot with the specified color
+for (activity_level in names(activity_colors)) {
+  data_subset <- subset(fruitfly_data, activity == activity_level)
+  points(data_subset$thorax, data_subset$longevity, col = activity_colors[activity_level], pch = 16)  # Using circles (pch=16) for all
+}
+
+# Add a legend with a title
+legend("topright", # Adjust this position as needed
+       legend = names(activity_colors),
+       fill = activity_colors,  # Using 'fill' here to show colored boxes in the legend
+       title = "Activity Level")
+
+```
 # Exercise 2
 
 ```{r}
@@ -194,7 +254,7 @@ birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
 ```
 
 In our data set we have multiple continuous and discrete variables. However, for the model we do not have to state that discrete variables are factors as all of them only have 2 levels (no = 0 and yes = 1). \## Lukas)
-
+## Lukas
 ### a)
 
 ### b)
@@ -448,7 +508,7 @@ Also very low sample size for some groups so the chisquare test is very unreliab
 
 ## TJ)
 
-### a)
+### A)
 
 ```{r}
 # Assuming birthweight_data is your dataset
@@ -460,12 +520,13 @@ TJ_BW <- lm(Birthweight ~ Length + Headcirc + Gestation + mage + mnocig + mheigh
 # Plot diagnostics for influential points
 par(mfrow=c(2,2))
 plot(TJ_BW, which=1:4) # Plots for residuals, leverage, etc.
+
 round(cooks.distance(TJ_BW),2)
 
 
 ```
 
-Upon inspection of Cook's distances, we conclude that there are no influence points in the data set, as no observation has a Cook's distance greater than 1.
+Upon inspection of plots and Cook's distances, we conclude that there are no influence points in the data set, as no observation has a Cook's distance greater than 1.
 
 ```{r}
 predictors <- birthweight_data[, c("Length", "Headcirc", "Gestation", "mage", "mnocig", "mheight", "mppwt", "fage", "fedyrs", "fnocig", "fheight")]
@@ -571,28 +632,27 @@ The boxplot do not show a clear difference in birthweight resulting from the var
 
 ```{r}
 TJ_LOWBWT <- glm(lowbwt ~ Gestation + mage35 + smoker, data = birthweight_data, family = binomial)
-summary(TJ_LOWBWT)
-exp(coef(TJ_LOWBWT))
+drop1(TJ_LOWBWT, test="Chisq")
+TJ_LOWBWT2 <- glm(lowbwt ~ Gestation + smoker, data = birthweight_data, family = binomial)
+summary(TJ_LOWBWT2)
+exp(coef(TJ_LOWBWT2))
 
 ```
-
-Upon analyzing the logistic regression summary, it is observed that 'gestation' significantly affects 'lowbwt' (p=0.029), indicating a statistically significant impact on low birthweight, whereas 'smoker' and 'mage35' do not show a statistically significant effect. However, the reliability of these findings is questioned due to insufficient sample sizes in groups with fewer than five observations. Despite this, the odds ratios suggest notable effects: 'gestation' has an odds ratio of 0.231 indicating a lower likelihood of low birthweigt for later weeks of gestation, 'smoking' has an odds ratio of 233, indicating a much higher likelihood of low birthweight among smokers, while 'mage35' shows a 38% increased odds for older mothers. These findings, highlight health risks but require larger studies for validation due to the current sample limitations, in particalarly for the effect of smoking.
+Certainly! Using the drop1 function on our model with 'Gestation', 'mage35', and 'smoker', we find that 'mage35' (p-value = 0.941) does not significantly affect the risk of low birth weight (lowbwt). From our analysis, the odds ratio for 'Gestation' is 0.230, indicating that for each additional week of gestation, the odds of lowbwt decrease by about 77%. For 'smoking', the odds ratio is 241, suggesting that smoking during pregnancy increases the odds of lowbwt by 241 times. These results underscore the protective effect of longer gestation and the significant risk posed by smoking on birth weight.
 
 ### g)
 
 ```{r}
 # Model with Gestation * smoker interaction
-TJ_LOWBWT_GestSmoker <- glm(lowbwt ~ mage35 +Gestation * smoker, data = birthweight_data)
-summary(TJ_LOWBWT_GestSmoker)
+TJ_LOWBWT_GestSmoker <- glm(lowbwt ~ mage35 + Gestation * smoker, data = birthweight_data, family="binomial")
 exp(coef(TJ_LOWBWT_GestSmoker))
 
 # Model with Gestation * mage35 interaction
-TJ_LOWBWT_GestMage35 <- glm(lowbwt ~ smoker +Gestation * mage35, data = birthweight_data)
-summary(TJ_LOWBWT_GestMage35)
-exp(coef(TJ_LOWBWT_GestMage35))
+TJ_LOWBWT_GestMage35 <- glm(lowbwt ~ smoker + Gestation * mage35, data = birthweight_data, family="binomial")
+summary(TJ_LOWBWT_GestMage35))
 ```
 
-Upon inspection of the two models, we pick the first one with the interaction of 'gestation' and 'smoking' since it yielded significant results for the interaction between the two factors. Interestingly the effect of 'gestation' in this model decreased, probably because a big part of its effect in the additive model is now better explained by its interaction with 'smoking'
+Both
 
 ### h)
 
@@ -600,23 +660,19 @@ The resulting model = lowbwt \~ Gestation + smoker + Gestation:smoker
 
 ```{r}
 # Assuming the model is stored in model_g
-model_g <- glm(lowbwt ~ Gestation + smoker + Gestation:smoker, data = birthweight_data)
+model_g <- glm(lowbwt ~ Gestation + smoker, data = birthweight_data, family="binomial")
 
 # New data frame for prediction at 40 weeks
 new_data <- data.frame(Gestation = c(40, 40),
                        smoker = c(0, 1))
-
-# Predict probabilities using the model
 probabilities <- predict(model_g, newdata = new_data, type = "response")
-
-# Print the probabilities for non-smokers and smokers
 print(probabilities)
 
-# No need to convert to odds if you're interested in probabilities
+
 
 ```
 
-For babies born at 40 weeks of gestation, the predicted probability of low birth weight is 2.62% for non-smokers and 10.51% for smokers, highlighting the significant impact of maternal smoking on birth weight outcomes. This underscores the importance of smoking cessation interventions during pregnancy to mitigate the risk of low birth weight.
+For babies born at 40 weeks of gestation, the predicted probability of low birth weight is <0.001% for non-smokers and 0.02% for smokers, highlighting the significant impact of maternal smoking on birth weight outcomes. This underscores the importance of smoking cessation interventions during pregnancy to mitigate the risk of low birth weight.
 
 ### i)
 
@@ -626,7 +682,7 @@ chi_squared_result <- chisq.test(contingency_table)
 print(chi_squared_result)
 ```
 
-This approach is not wrong, however as mentioned before, the sample sizes in some of the experimental units are not large enough \<5. Making the chi-squared results unreliable and incorrect. If we would have a larger sample, chi-squared would work. The advantage of chi-squared is its simplicity, however nuances such as the interaction we found between 'smoking' and 'gestation' would not have been found by only using chi-squared. So it has the caveat of possibly overlooking important nuances.
+This approach is not wrong, however as mentioned before, the sample sizes in some of the experimental units are not large enough \<5. Making the chi-squared results unreliable and incorrect. If we would have a larger sample, chi-squared would work. The advantage of chi-squared is its simplicity, however due to its simplicity it has possibility overlooking important nuances.
 
 # Exercise 3
 
@@ -715,9 +771,11 @@ kw_test_result
 ```
 ### c)
 ```{r}
-awardsmath <- glm(num_awards ~ factor(prog)*math, family="poisson", data=awards_data)
-summary(awardsmath)
+awardsinteractionmath <- glm(num_awards ~ factor(prog)*math, family="poisson", data=awards_data)
+summary(awardsinteractionmath)
 
+awardsmath <- glm(num_awards ~ factor(prog)+math, family="poisson", data=awards_data)
+summary(awardsmath)
 
 # Assuming your fitted model is stored in `model` and includes prog, math, and their interaction
 # Create a new data frame for prediction with prog as numeric 1, 2, 3
@@ -735,4 +793,4 @@ print(new_data)
 
 
 ```
-No significant results were found, so its hard to say. But program 3 has the highest estimate, but a negative interaction term with math???
+No significant interaction results were found. Looking at the additive model with math included, we conclude that program 3 is the best with a predicted amount of awards of 1.213.
