@@ -12,94 +12,266 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-```
-
-```{r, include=FALSE}
 set.seed(333)
 library(lme4)
 library(Matrix)
+library(carData)
+library(ggplot2)
+library(glmnet)
 options(digits=3)
 ```
-*We used the library lme4, Matrix with options(digits=3) and a seed of
-333*
+
+*We used the library lme4, glmnet, Matrix, carData and ggplot2 with
+options(digits=3) and a seed of 333*
 
 # Exercise 1
 
 ## Preliminary
 
-```{r}
-ice_cream_data=read.csv(file="Ice_cream-1.csv",header=TRUE)
-video = ice_cream_data$video
-mean_video = mean(video)
-sd_video = sd(video)
-n = length(video)
-```
-
 ## a)
 
-
+-   $H_0$:
+-   $H_1$:
 
 ## b)
 
-
+-   $H_0$:
+-   $H_1$:
 
 ## c)
 
-
+-   $H_0$:
+-   $H_1$:
 
 ## d)
 
-
+-   $H_0$:
+-   $H_1$:
 
 ## e)
 
-
-
-## f)
-
+-   $H_0$:
+-   $H_1$:
 
 # Exercise 2
 
 ## Preliminary
 
-
+```{r}
+birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
+```
 
 ## a)
 
-
-
 ## b)
 
+```{r}
+final_model = lm(Birthweight ~ Headcirc + Gestation, data=birthweight_data)
+summary(final_model)
 
+```
+
+Order of removal: fage, mheight, fedyrs, fnocig, mnocig, Length,
+fheight, mage, mppwt
+
+### Question: Shouldnt we delete the coulomn lowbwt? As that should always have an effect on birthweigh, Also we still have to comment on the results and I really dont know what to add
+
+```{r}
+residuals = residuals(final_model)
+test_results_sw = shapiro.test(residuals)
+cat("The p-value of the Shapiro-Wilk test is:", test_results_sw$p.value)
+```
+
+-   $H_0$: The residuals from the linear regression model follow a
+    normal distribution.
+-   $H_1$: The residuals from the linear regression model do not follow
+    a normal distribution.
+
+```{r, echo=FALSE, fig.height=3}
+par(mfrow = c(1, 3))
+boxplot(residuals, main = "Boxplot of Residuals", ylab = "Residuals", xlab = "Index")
+qqnorm(residuals, main = "Q-Q Plot of Residuals")
+qqline(residuals, col = "red")
+hist(residuals, main = "Histogram of Residuals", xlab = "Residuals", breaks = 20)
+```
+
+We do not reject $H_0$ so we cannot conclude that the residuals are not
+normally distribtuted, however after taking a good look at the QQ plot
+and the histoplot we conclude that our residuals are not normally
+distributed.
 
 ## c)
 
+### Remark. I dont understand these formulas:
 
+Now we are left with two different models. Model 1 with R 2 = 0.771 and
+σˆ = 2.51: Fat = -23.6345 + 0.8565*Thigh + error Model 2 with R 2 =
+0.7862 and σˆ = 2.496: Fat = 6.7916 + 1.0006*Triceps -0.4314\*Midarm +
+error
+
+Slide 10 of lecture 8
+
+```{r}
+fitted_values = fitted(final_model)
+average_values = data.frame(
+  Headcirc = mean(birthweight_data$Headcirc, na.rm = TRUE),
+  Gestation = mean(birthweight_data$Gestation, na.rm = TRUE)
+)
+
+confidence_intervals = predict(final_model, newdata = average_values, interval =
+                                 "confidence", level = 0.95)
+
+prediction_intervals = predict(final_model, newdata = average_values, interval = 
+                                 "prediction", level = 0.95)
+
+print(fitted_values)
+print("95% Confidence Intervals for the Mean Response:")
+print(confidence_intervals)
+print("95% Prediction Intervals for a New Observation:")
+print(prediction_intervals)
+```
+
+The output indicates that for babies with average head circumference and
+gestation, the model predicts a mean Birthweight of 3.31 kg, with a 95%
+confidence interval of 3.21 to 3.42 kg for the mean and a wider 95%
+prediction interval of 2.61 to 4.02 kg for individual observations,
+reflecting the increased uncertainty in predicting specific outcomes.
 
 ## d)
 
+```{r}
+x=as.matrix(birthweight_data[,-3]) # remove the response variable
+y=as.double(as.matrix(birthweight_data[,3])) # only the response variable
+train=sample(1:nrow(x),0.67*nrow(x)) # train by using 2/3 of the data
+x.train=x[train,]; y.train=y[train] # data to train
+x.test=x[-train,]; y.test=y[-train] # data to test the prediction quality
+lasso.mod=glmnet(x.train,y.train,alpha=1)
+cv.lasso=cv.glmnet(x.train,y.train,alpha=1,type.measure='mse')
+plot(lasso.mod,label=T,xvar="lambda") # have a look at the lasso path
+plot(cv.lasso) # the best lambda by cross-validation
+plot(cv.lasso$glmnet.fit,xvar="lambda",label=T)
+lambda.min=cv.lasso$lambda.min; lambda.1se=cv.lasso$lambda.1se
+coef(lasso.mod,s=cv.lasso$lambda.1se) # beta’s for the best lambda
+y.pred=predict(lasso.mod,s=lambda.1se,newx=x.test) # predict for test
+mse.lasso=mean((y.test-y.pred)^2) # mse for the predicted test rows
+new_model = lm(Birthweight ~ Length + Headcirc + Gestation + lowbwt, data=birthweight_data)
+summary(new_model)
+summary(final_model)
+```
 
+Upon insepction of the summary tables, although the LASSO model has a slightly higher R-squared value, we prefer the step-down model, because the two added variables in the LASSO model are insignificant and it does not make sense to add them in respect to complexity.
+
+### Question: Should we mention any of these plots as well?
+
+```{r, eval=FALSE}
+x=as.matrix(birthweight_data[,-3]) # remove the response variable
+y=as.double(as.matrix(birthweight_data[,3])) # only the response variable
+train=sample(1:nrow(x),0.67*nrow(x)) # train by using 2/3 of the data
+x.train=x[train,]; y.train=y[train] # data to train
+x.test=x[-train,]; y.test=y[-train] # data to test the prediction quality
+lasso.mod=glmnet(x.train,y.train,alpha=1)
+cv.lasso=cv.glmnet(x.train,y.train,alpha=1,type.measure='mse')
+plot(lasso.mod,label=T,xvar="lambda") # have a look at the lasso path
+plot(cv.lasso) # the best lambda by cross-validation
+plot(cv.lasso$glmnet.fit,xvar="lambda",label=T)
+lambda.min=cv.lasso$lambda.min; lambda.1se=cv.lasso$lambda.1se
+coef(lasso.mod,s=cv.lasso$lambda.1se) # beta’s for the best lambda
+y.pred=predict(lasso.mod,s=lambda.1se,newx=x.test) # predict for test
+mse.lasso=mean((y.test-y.pred)^2) # mse for the predicted test rows
+new_model = lm(Birthweight ~ Length + Headcirc + Gestation + lowbwt, data=birthweight_data)
+```
+```{r}
+summary(new_model)
+summary(final_model)
+```
 
 ## e)
 
+-   $H_0$:
+-   $H_1$:
 
+## f)
+
+-   $H_0$:
+-   $H_1$:
+
+## g)
+
+-   $H_0$:
+-   $H_1$:
+
+## h)
+
+-   $H_0$:
+-   $H_1$:
+
+## i)
+
+-   $H_0$:
+-   $H_1$:
 
 # Exercise 3
 
+## Preliminary
 
+```{r}
+awards_data=read.table(file="awards.txt",header=TRUE)
+```
 
 ## a)
 
+-   $H_0$: The type of program (vocational, general, academic) does not influence the number of awards earned by students.
+-   $H_1$: The type of program (vocational, general, academic) has an influence on the number of awards earned by students.
 
+```{r}
+awards_data$prog = factor(awards_data$prog)
+model = glm(num_awards ~ prog, family = poisson(link = "log"), data = awards_data)
+summary(model)
+
+new_data = data.frame(prog = factor(c(1, 2, 3)))
+predicted_awards = predict(model, newdata = new_data, type = "response")
+
+print(predicted_awards)
+```
+Based on the significant p-values for prog2 (general program) and the intercept in the Poisson regression model summary, we can reject $H_0$ for these variables, indicating that the type of program influences the number of awards students receive. The Poisson regression analysis reveals that students in the general program (prog2) are statistically likely to receive more awards than those in vocational programs, as indicated by significant coefficients. Academic program students (prog3) also show an increased number of awards, though not statistically significant. Predictions confirm the "general" program as most favorable for receiving awards.
+
+## Maybe a bit too long check later
 
 ## b)
 
+-   $H_0$: There is no difference in the distribution of the number of awards across the different program types (vocational, general, academic).
+-   $H_1$: At least one program type has a significantly different distribution of the number of awards compared to the others.
 
+```{r}
+kruskal_test_result = kruskal.test(num_awards ~ prog, data = awards_data)
+cat("The p-value of the Shapiro-Wilk test is:", kruskal_test_result$p.value)
+```
+
+We reject H0 that everything is the same as the p-value is 0.005. However we can not infer which program type is the best for the number of awards.
 
 ## c)
 
+## Should we even add those h0 and h1? Not sure if it makes sense here
+-   $H_0$: The interaction between program type and math score does not significantly affect the number of awards students receive.
+-   $H_1$: The interaction between program type and math score significantly affects the number of awards students receive.
 
+```{r}
+awardsinteractionmath = glm(num_awards ~ factor(prog)*math, family="poisson", data=awards_data)
+summary(awardsinteractionmath)
 
-## d)
+awardsmath = glm(num_awards ~ factor(prog)+math, family="poisson", data=awards_data)
+summary(awardsmath)
 
+# Create a new data frame for prediction with prog as numeric 1, 2, 3
+new_data = data.frame(prog = factor(c(1, 2, 3), levels = c(1, 2, 3)),
+                       math = 56)
 
+# Predict the number of awards using the model
+predictions = predict(awardsmath, newdata=new_data, type="response")
+
+# Add predictions to the new_data dataframe for easy viewing
+new_data$predicted_awards = predictions
+print(new_data)
+```
+
+No significant interaction results were found therefor we removed the interaction. Looking at the additive model with math included, we conclude that program 3 is the best with a predicted amount of awards of 1.213.
