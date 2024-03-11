@@ -11,7 +11,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, fig.height = 3)
+knitr::opts_chunk$set(echo = TRUE, fig.height = 3, out.width='\\textwidth', message = FALSE, warning = FALSE)
 set.seed(333)
 library(lme4)
 library(Matrix)
@@ -19,12 +19,10 @@ library(carData)
 library(car)
 library(ggplot2)
 library(glmnet)
-
 options(digits=3)
 ```
 
-*We used the library lme4, glmnet, Matrix, car and ggplot2 with
-options(digits=3) and a seed of 333*
+We used the library lme4, glmnet, Matrix, car and ggplot2 with options(digits=3) and a seed of 333*
 
 # Exercise 1
 
@@ -85,7 +83,7 @@ Since we get a p-value of 4e-9, we reject $H_0$ and conclude that sexual
 activity influences longevity.
 
 ```{r}
-summary(longaovB)
+summary(longaovB)$coefficients
 ```
 
 Activityisolated and activitylow are both positive, with isolated having a larger coefficient than low. Showing that compared to high sexual activity, being isolated is associated with an increase in log-longevity (which translates to an increase in actual longevity), while low sexual activity is also associated with an increase in log-longevity but to a lesser extent than isolation. Therefore, sexual activity appears to decrease longevity compared to no activity, with higher activity decreasing it more.
@@ -151,7 +149,7 @@ We perform ANCOVA:
 ```{r}
 interaction_model = lm(loglongevity ~ thorax * activity, data = fruitfly_data)
 anova(interaction_model)
-summary(interaction_model)
+summary(interaction_model)$coefficients
 ```
 
 The interaction between thorax length and sexual activity is non significant p-value of 0.15. The interaction between thorax length and isolated sexual activity is marginally (p-value = 0.055) significant, indicating a possible difference in this effect between flies with no sexual activity and those with high sexual activity
@@ -177,7 +175,7 @@ Model A without thorax interaction has a R-squared = 0.332, model B with thorax 
 ```{r}
 fruitfly_data$activity = as.factor(fruitfly_data$activity)
 ancova_model = lm(longevity ~ thorax + activity, data = fruitfly_data)
-summary(ancova_model)
+summary(ancova_model)$coefficients
 anova(ancova_model)
 drop1(ancova_model, test = "F")
 ```
@@ -202,8 +200,6 @@ cat("\np-value Longevity", shapanc$p.value)
 par(mfrow = c(1, 2))
 plot(longaovB, which = 1, main = "log longevity: Residuals vs Fitted")
 plot(ancova_model, which = 1, main = "longevity: Residuals vs Fitted")
-plot(residuals(longaovB),fruitfly_data$loglongevity)
-plot(residuals(ancova_model), fruitfly_data$longevity)
 ```
 
 
@@ -240,7 +236,7 @@ Upon inspection of correlation matrix, we note that variables mage and fage appe
 
 ```{r}
 final_model = lm(Birthweight ~ Headcirc + Gestation, data=birthweight_data)
-summary(final_model)
+summary(final_model)$coefficients
 ```
 
 Order of removal: fage, mheight, fedyrs, fnocig, mnocig, Length,
@@ -290,7 +286,7 @@ The output indicates that for babies with average head circumference and gestati
 
 ## d)
 
-```{r}
+```{r, warning=FALSE}
 par(mfrow = c(1,2))
 x=as.matrix(birthweight_data[,-3]) # remove the response variable
 y=as.double(as.matrix(birthweight_data[,3])) # only the response variable
@@ -299,14 +295,12 @@ x.train=x[train,]; y.train=y[train] # data to train
 x.test=x[-train,]; y.test=y[-train] # data to test the prediction quality
 lasso.mod=glmnet(x.train,y.train,alpha=1)
 cv.lasso=cv.glmnet(x.train,y.train,alpha=1,type.measure='mse')
-plot(lasso.mod,label=T,xvar="lambda") # have a look at the lasso path
-plot(cv.lasso) # the best lambda by cross-validation
 lambda.min=cv.lasso$lambda.min; lambda.1se=cv.lasso$lambda.1se
 coef(lasso.mod,s=cv.lasso$lambda.1se) # beta’s for the best lambda
 y.pred=predict(lasso.mod,s=lambda.1se,newx=x.test) # predict for test
 mse.lasso=mean((y.test-y.pred)^2) # mse for the predicted test rows
 new_model = lm(Birthweight ~ Length + Headcirc + Gestation + lowbwt, data=birthweight_data)
-summary(new_model)
+summary(new_model)$coefficients
 ```
 
 Upon inspection of the summary tables, although the LASSO model has a slightly higher R-squared value, we prefer the step-down model, because the two added variables in the LASSO model are insignificant and it does not make sense to add them in respect to complexity.
@@ -424,8 +418,7 @@ Both interaction terms—'Gestation:smoker' and 'Gestation:mage35'—do not demo
 
 ```{r}
 model_g <- glm(lowbwt ~ Gestation + smoker, data = birthweight_data, family="binomial")
-new_data <- data.frame(Gestation = c(40, 40),
-                       smoker = c(0, 1))
+new_data <- data.frame(Gestation = c(40, 40), smoker = c(0, 1))
 probabilities <- predict(model_g, newdata = new_data, type = "response")
 print(probabilities)
 ```
@@ -443,7 +436,6 @@ print(chi_squared_result)
 Applying a contingency table test, such as the chi-squared test, to address the questions is a valid approach with certain limitations. A major advantage of this method is its straightforwardness and its capacity to explore associations between categorical variables without assuming a specific relationship form. However, one significant disadvantage is its unreliability with very small sample sizes (e.g., \<5 in some groups), which can make chi-squared results misleading, and is this case for this dataset. Additionally, while chi-squared tests are simple and useful for initial explorations, they lack the ability to adjust for other variables or to interpret effects in terms of odds ratios, unlike logistic regression. This simplicity might lead to overlooking complex nuances in the data.
 
 # Exercise 3
-
 ```{r}
 awards_data=read.table(file="awards.txt",header=TRUE)
 ```
@@ -458,7 +450,7 @@ awards_data=read.table(file="awards.txt",header=TRUE)
 ```{r}
 awards_data$prog = factor(awards_data$prog)
 model = glm(num_awards ~ prog, family = poisson, data = awards_data)
-summary(model)
+summary(model)$coefficients
 new_data = data.frame(prog = factor(c(1, 2, 3)))
 predicted_awards = predict(model, newdata = new_data, type = "response")
 print(predicted_awards)
@@ -487,11 +479,10 @@ We reject H0 that everything is the same as the p-value is 0.005. However we can
 
 ```{r}
 awardsinteractionmath = glm(num_awards ~ factor(prog)*math, family="poisson", data=awards_data)
-summary(awardsinteractionmath)
+summary(awardsinteractionmath)$coefficients
 awardsmath = glm(num_awards ~ factor(prog)+math, family="poisson", data=awards_data)
-summary(awardsmath)
-new_data = data.frame(prog = factor(c(1, 2, 3), levels = c(1, 2, 3)),
-                       math = 56)
+summary(awardsmath)$coefficients
+new_data = data.frame(prog = factor(c(1, 2, 3), levels = c(1, 2, 3)), math = 56)
 predictions = predict(awardsmath, newdata=new_data, type="response")
 new_data$predicted_awards = predictions
 print(new_data)
