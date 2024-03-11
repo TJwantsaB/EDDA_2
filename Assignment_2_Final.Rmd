@@ -28,30 +28,197 @@ options(digits=3) and a seed of 333*
 
 ## Preliminary
 
+```{r}
+fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
+fruitfly_data$loglongevity <- log(fruitfly_data$longevity)
+```
+
 ## a)
 
--   $H_0$:
--   $H_1$:
+```{r}
+boxplot(loglongevity ~ activity, data = fruitfly_data, 
+        xlab = "Activity Group", ylab = "Log Longevity",
+        main = "Log Longevity by Activity Group")
+```
+
+We perform ANOVA to test whether sexual activity influences longevity.
+ANOVA does assume normality, however, our TA mentioned that we do not
+need to check for normality.
+
+-   $H_0$: The mean loglongevity is the same across all activity groups.
+
+-   $H_1$: The mean loglongevity is not the same across all activity
+    groups.
+
+```{r}
+longaov <- lm(loglongevity ~ activity, data = fruitfly_data); anova(longaov)
+```
+
+Since we get a p-value of 1.8e-7, we reject $H_0$ and conclude that
+sexual activity influences longevity.
+
+The estimated longevities for the three conditions are (asked the TA and
+we assume normality, therefore checking the means):
+
+```{r}
+tapply(fruitfly_data$longevity, fruitfly_data$activity, mean)
+```
+
+From the values you can see that the mean of "high" is a lot lower than
+the mean of the two other groups. This suggests that increased sexual
+activity may be associated with decreased longevity in fruit flies.
 
 ## b)
 
--   $H_0$:
--   $H_1$:
+-   $H_0$: The mean loglongevity is the same across all activity groups
+    after accounting for the effect of thorax.
+
+-   $H_1$: The mean loglongevity is not the same across all activity
+    groups after accounting for the effect of thorax.
+
+```{r}
+longaov <- lm(loglongevity ~ thorax + activity, data = fruitfly_data)
+anova(longaov)
+```
+
+Since we get a p-value of 4e-9, we reject $H_0$ and conclude that sexual
+activity influences longevity.
+
+```{r}
+summary(longaov)
+```
+
+activityisolated and activitylow are both positive, with isolated having
+a larger coefficient than low. Showing that compared to high sexual
+activity, being isolated is associated with an increase in log-longevity
+(which translates to an increase in actual longevity), while low sexual
+activity is also associated with an increase in log-longevity but to a
+lesser extent than isolation. Therefore, sexual activity appears to
+decrease longevity compared to no activity, with higher activity
+decreasing it more.
+
+```{r}
+
+average_thorax = mean(fruitfly_data$thorax)
+new_data = expand.grid(activity = unique(fruitfly_data$activity), thorax = average_thorax)
+new_data$predicted_loglongevity = predict(longaov, newdata = new_data)
+new_data$predicted_longevity = exp(new_data$predicted_loglongevity)
+print(new_data)
+```
 
 ## c)
 
--   $H_0$:
--   $H_1$:
+```{r}
+# Define colors for each activity level
+activity_colors <- setNames(c("green", "blue", "red"), c("isolated", "low", "high"))
+
+# Base plot with points. No points will be plotted here because 'pch' is set to NA.
+plot(loglongevity ~ thorax, data = fruitfly_data, pch = NA,
+     main = "Log(Longevity) by Thorax Length and Activity Level",
+     xlab = "Thorax Length", ylab = "Log(Longevity)")
+
+# Loop through each activity level to plot points
+for (activity_level in names(activity_colors)) {
+  # Subset the data for the current activity level
+  data_subset <- subset(fruitfly_data, activity == activity_level)
+  points(data_subset$thorax, data_subset$loglongevity, col = activity_colors[activity_level], pch = 16)
+}
+
+# Loop through each activity level and draw regression lines with specified color
+for (activity_level in names(activity_colors)) {
+  # Subset the data for the current activity level
+  data_subset <- subset(fruitfly_data, activity == activity_level)
+  # Check if the subset is not empty to avoid the error
+  if(nrow(data_subset) > 0) {
+    # Fit the linear model
+    fit <- lm(loglongevity ~ thorax, data = data_subset)
+    # Generate new data for plotting the line
+    new_thorax <- seq(min(data_subset$thorax), max(data_subset$thorax), length.out = 100)
+    preds <- predict(fit, newdata = data.frame(thorax = new_thorax))
+    # Draw the line
+    lines(new_thorax, preds, col = activity_colors[activity_level], lwd = 2)
+  }
+}
+
+# Add a legend to the plot to identify the colors
+legend("bottomright", legend = names(activity_colors), 
+       col = activity_colors, pch = 16, lty = 1, cex = 0.8,
+       title = "Activity Level")
+```
+
+The scatter plot with regression lines shows a positive relationship
+between thorax length and loglongevity.
+
+We perform ANCOVA:
+
+-   $H_0$: There is no interaction effect between activity and thorax on
+    loglongevity.
+
+-   $H_1$: There is an interaction effect between activity and thorax on
+    loglongevity.
+
+```{r}
+interaction_model = lm(loglongevity ~ thorax * activity, data = fruitfly_data)
+summary(interaction_model)
+```
+
+The interaction between thorax length and isolated sexual activity is
+marginally (0.55) significant, indicating a possible difference in this
+effect between flies with no sexual activity and those with high sexual
+activity.
 
 ## d)
 
--   $H_0$:
--   $H_1$:
+Model A without thorax interaction has a R-squared = 0.332, model B with
+thorax interaction has a R-squard = 0.709. Therefore, we should prefer
+model B. Additionally, model B is model A with an added significant
+variable namely thorax. However, none of the analyses are wrong.
 
 ## e)
 
--   $H_0$:
--   $H_1$:
+```{r}
+# Define colors for each activity level
+activity_colors <- setNames(c("green", "blue", "red"), c("isolated", "low", "high"))
+
+# Plot the base layer without points to set up axes, labels, and title
+plot(longevity ~ thorax, data = fruitfly_data, type = "n",
+     main = "Longevity vs Thorax Length by Activity Level",
+     xlab = "Thorax Length", ylab = "Longevity")
+
+# Loop through each activity level and plot with the specified color
+for (activity_level in names(activity_colors)) {
+  data_subset <- subset(fruitfly_data, activity == activity_level)
+  points(data_subset$thorax, data_subset$longevity, col = activity_colors[activity_level], pch = 16)  # Using circles (pch=16) for all
+}
+
+# Add a legend with a title
+legend("topright", # Adjust this position as needed
+       legend = names(activity_colors),
+       fill = activity_colors,  # Using 'fill' here to show colored boxes in the legend
+       title = "Activity Level")
+
+```
+
+-   $H_0$: There is no difference in the mean longevity among different
+    activity levels after accounting for thorax length.
+-   $H_0$: There is a difference in the mean longevity among different
+    activity levels after accounting for thorax length.
+
+```{r}
+fruitfly_data$activity = as.factor(fruitfly_data$activity)
+ancova_model = lm(longevity ~ thorax + activity, data = fruitfly_data)
+summary(ancova_model)
+anova(ancova_model)
+drop1(ancova_model, test = "F")
+
+```
+
+The ANCOVA with raw longevity data has a slightly lower adjusted
+R-squared compared to the model with log-transformed longevity, which
+suggests that the log transformation may provide a better fit. The
+choice of using the log of longevity as the response variable likely
+helped to stabilize variance and linearize the relationship between
+predictors and longevity, making it a wise choice for the analysis.
 
 # Exercise 2
 
@@ -81,6 +248,19 @@ round(cooks.distance(TJ_BW),2)
 Upon inspection of plots and Cook's distances, we conclude that there
 are no influence points in the data set, as no observation has a Cook's
 distance greater than 1.
+
+```{r}
+predictors <- birthweight_data[, c("Length", "Headcirc", "Gestation", "mage", "mnocig", "mheight", "mppwt", "fage", "fedyrs", "fnocig", "fheight")]
+print(cor(predictors))
+library(car)
+vif_values <- vif(TJ_BW)
+print(vif_values)
+```
+
+Upon inspection of correlation matrix, we note that variables mage and
+fage appear to be highly correlated (0.806), however their VIF values
+are under 5, therefore we conclude that the model has no problem of
+collinearity.
 
 ## b)
 
