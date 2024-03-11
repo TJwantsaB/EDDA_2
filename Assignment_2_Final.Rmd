@@ -238,11 +238,9 @@ TJ_BW <- lm(Birthweight ~ Length + Headcirc + Gestation + mage + mnocig + mheigh
 
 par(mfrow=c(1,3))
 plot(TJ_BW, which=1:2)
-plot(TJ_BW, which=4)# Plots for residuals, leverage, etc.
+plot(TJ_BW, which=4)
 
 round(cooks.distance(TJ_BW),2)
-
-
 ```
 
 Upon inspection of plots and Cook's distances, we conclude that there
@@ -267,7 +265,6 @@ collinearity.
 ```{r}
 final_model = lm(Birthweight ~ Headcirc + Gestation, data=birthweight_data)
 summary(final_model)
-
 ```
 
 Order of removal: fage, mheight, fedyrs, fnocig, mnocig, Length,
@@ -355,10 +352,10 @@ y.pred=predict(lasso.mod,s=lambda.1se,newx=x.test) # predict for test
 mse.lasso=mean((y.test-y.pred)^2) # mse for the predicted test rows
 new_model = lm(Birthweight ~ Length + Headcirc + Gestation + lowbwt, data=birthweight_data)
 summary(new_model)
-summary(final_model)
+# summary(final_model)
 ```
 
-Upon insepction of the summary tables, although the LASSO model has a
+Upon inspection of the summary tables, although the LASSO model has a
 slightly higher R-squared value, we prefer the step-down model, because
 the two added variables in the LASSO model are insignificant and it does
 not make sense to add them in respect to complexity.
@@ -385,7 +382,7 @@ new_model = lm(Birthweight ~ Length + Headcirc + Gestation + lowbwt, data=birthw
 
 ```{r}
 summary(new_model)
-summary(final_model)
+# summary(final_model)
 ```
 
 ## e)
@@ -469,6 +466,8 @@ lowbwt by approximately 77% (odds ratio = 0.23, p-value = 9e-06).
 241, p-value = 0.013), pointing to a substantial risk increase due to
 smoking. These results highlight the importance of gestation duration
 and the detrimental impact of smoking on birthweight.
+
+### Question how did you get that smoker increases the odds and gestation decreases
 
 ## g)
 
