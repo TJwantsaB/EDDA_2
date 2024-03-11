@@ -11,22 +11,22 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, fig.height = 3)
 set.seed(333)
 library(lme4)
 library(Matrix)
 library(carData)
+library(car)
 library(ggplot2)
 library(glmnet)
+
 options(digits=3)
 ```
 
-*We used the library lme4, glmnet, Matrix, carData and ggplot2 with
+*We used the library lme4, glmnet, Matrix, car and ggplot2 with
 options(digits=3) and a seed of 333*
 
 # Exercise 1
-
-## Preliminary
 
 ```{r}
 fruitfly_data=read.table(file="fruitflies.txt",header=TRUE)
@@ -51,7 +51,7 @@ need to check for normality.
     groups.
 
 ```{r}
-longaov <- lm(loglongevity ~ activity, data = fruitfly_data); anova(longaov)
+longaovA <- lm(loglongevity ~ activity, data = fruitfly_data); anova(longaovA)
 ```
 
 Since we get a p-value of 1.8e-7, we reject $H_0$ and conclude that
@@ -77,38 +77,30 @@ activity may be associated with decreased longevity in fruit flies.
     groups after accounting for the effect of thorax.
 
 ```{r}
-longaov <- lm(loglongevity ~ thorax + activity, data = fruitfly_data)
-anova(longaov)
+longaovB <- lm(loglongevity ~ thorax + activity, data = fruitfly_data)
+anova(longaovB)
 ```
 
 Since we get a p-value of 4e-9, we reject $H_0$ and conclude that sexual
 activity influences longevity.
 
 ```{r}
-summary(longaov)
+summary(longaovB)
 ```
 
-activityisolated and activitylow are both positive, with isolated having
-a larger coefficient than low. Showing that compared to high sexual
-activity, being isolated is associated with an increase in log-longevity
-(which translates to an increase in actual longevity), while low sexual
-activity is also associated with an increase in log-longevity but to a
-lesser extent than isolation. Therefore, sexual activity appears to
-decrease longevity compared to no activity, with higher activity
-decreasing it more.
+Activityisolated and activitylow are both positive, with isolated having a larger coefficient than low. Showing that compared to high sexual activity, being isolated is associated with an increase in log-longevity (which translates to an increase in actual longevity), while low sexual activity is also associated with an increase in log-longevity but to a lesser extent than isolation. Therefore, sexual activity appears to decrease longevity compared to no activity, with higher activity decreasing it more.
 
 ```{r}
-
 average_thorax = mean(fruitfly_data$thorax)
 new_data = expand.grid(activity = unique(fruitfly_data$activity), thorax = average_thorax)
-new_data$predicted_loglongevity = predict(longaov, newdata = new_data)
+new_data$predicted_loglongevity = predict(longaovB, newdata = new_data)
 new_data$predicted_longevity = exp(new_data$predicted_loglongevity)
 print(new_data)
 ```
 
 ## c)
 
-```{r}
+```{r, echo=FALSE}
 # Define colors for each activity level
 activity_colors <- setNames(c("green", "blue", "red"), c("isolated", "low", "high"))
 
@@ -146,8 +138,7 @@ legend("bottomright", legend = names(activity_colors),
        title = "Activity Level")
 ```
 
-The scatter plot with regression lines shows a positive relationship
-between thorax length and loglongevity.
+The scatter plot with regression lines shows a positive relationship between thorax length and loglongevity, but no clear interaction clear difference in this effect between sexual activity groups.
 
 We perform ANCOVA:
 
@@ -159,49 +150,28 @@ We perform ANCOVA:
 
 ```{r}
 interaction_model = lm(loglongevity ~ thorax * activity, data = fruitfly_data)
+anova(interaction_model)
 summary(interaction_model)
 ```
 
-The interaction between thorax length and isolated sexual activity is
-marginally (0.55) significant, indicating a possible difference in this
-effect between flies with no sexual activity and those with high sexual
-activity.
+The interaction between thorax length and sexual activity is non significant p-value of 0.15. The interaction between thorax length and isolated sexual activity is marginally (p-value = 0.055) significant, indicating a possible difference in this effect between flies with no sexual activity and those with high sexual activity
 
 ## d)
-
-Model A without thorax interaction has a R-squared = 0.332, model B with
-thorax interaction has a R-squard = 0.709. Therefore, we should prefer
-model B. Additionally, model B is model A with an added significant
-variable namely thorax. However, none of the analyses are wrong.
+```{r}
+model_summary <- summary(longaovA) 
+adjusted_r_squared <- model_summary$adj.r.squared
+cat("R-adjusted model A: ", adjusted_r_squared)
+model_summary <- summary(longaovB) 
+adjusted_r_squared <- model_summary$adj.r.squared
+cat("\nR-adjusted model B: ", adjusted_r_squared)
+```
+Model A without thorax interaction has a R-squared = 0.332, model B with thorax interaction has a R-squard = 0.709. Therefore, we should prefer model B. Additionally, model B is model A with an added significant variable namely thorax. However, none of the analyses are wrong.
 
 ## e)
 
-```{r}
-# Define colors for each activity level
-activity_colors <- setNames(c("green", "blue", "red"), c("isolated", "low", "high"))
-
-# Plot the base layer without points to set up axes, labels, and title
-plot(longevity ~ thorax, data = fruitfly_data, type = "n",
-     main = "Longevity vs Thorax Length by Activity Level",
-     xlab = "Thorax Length", ylab = "Longevity")
-
-# Loop through each activity level and plot with the specified color
-for (activity_level in names(activity_colors)) {
-  data_subset <- subset(fruitfly_data, activity == activity_level)
-  points(data_subset$thorax, data_subset$longevity, col = activity_colors[activity_level], pch = 16)  # Using circles (pch=16) for all
-}
-
-# Add a legend with a title
-legend("topright", # Adjust this position as needed
-       legend = names(activity_colors),
-       fill = activity_colors,  # Using 'fill' here to show colored boxes in the legend
-       title = "Activity Level")
-
-```
-
 -   $H_0$: There is no difference in the mean longevity among different
     activity levels after accounting for thorax length.
--   $H_0$: There is a difference in the mean longevity among different
+-   $H_1$: There is a difference in the mean longevity among different
     activity levels after accounting for thorax length.
 
 ```{r}
@@ -210,19 +180,37 @@ ancova_model = lm(longevity ~ thorax + activity, data = fruitfly_data)
 summary(ancova_model)
 anova(ancova_model)
 drop1(ancova_model, test = "F")
-
 ```
 
-The ANCOVA with raw longevity data has a slightly lower adjusted
-R-squared compared to the model with log-transformed longevity, which
-suggests that the log transformation may provide a better fit. The
-choice of using the log of longevity as the response variable likely
-helped to stabilize variance and linearize the relationship between
-predictors and longevity, making it a wise choice for the analysis.
+```{r, echo=FALSE}
+#plot heteroskedacity
+par(mfrow = c(1, 2))  # Plot side by side
+qqnorm(residuals(longaovB), main = "Log Longevity Residuals")
+qqline(residuals(longaovB))
+qqnorm(residuals(ancova_model), main = "Longevity Residuals")
+qqline(residuals(ancova_model))
+```
+
+```{r}
+shapB <- shapiro.test(residuals(longaovB))
+shapanc <-shapiro.test(residuals(ancova_model))
+cat("p-value Log Longevity", shapB$p.value)
+cat("\np-value Longevity", shapanc$p.value)
+```
+
+```{r, echo=FALSE}
+par(mfrow = c(1, 2))
+plot(longaovB, which = 1, main = "log longevity: Residuals vs Fitted")
+plot(ancova_model, which = 1, main = "longevity: Residuals vs Fitted")
+plot(residuals(longaovB),fruitfly_data$loglongevity)
+plot(residuals(ancova_model), fruitfly_data$longevity)
+```
+
+
+
+The ANCOVA model using raw longevity data shows a slightly lower adjusted R-squared than the model with log-transformed longevity, hinting that logarithmic transformation may offer a tighter fit. However, this transformation shifts the sample's distribution away from normality, evident from QQ-plots and a Shapiro-Wilk test p-value of 0.058. Before concluding, it's noteworthy that the log transformation appears to marginally equalize the variance of residuals. Despite this, the deviation from normal distribution in the log-transformed model leads us to prefer the raw longevity model. We believe it is unwise to convert variables before concluding the original variable is problematic.
 
 # Exercise 2
-
-## Preliminary
 
 ```{r}
 birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
@@ -230,35 +218,23 @@ birthweight_data=read.csv(file="Birthweight.csv",header=TRUE)
 
 ## a)
 
-```{r}
-summary(birthweight_data)
-
-# Fit a linear model
+```{r, echo=FALSE}
 TJ_BW <- lm(Birthweight ~ Length + Headcirc + Gestation + mage + mnocig + mheight + mppwt + fage + fedyrs + fnocig + fheight, data=birthweight_data)
-
 par(mfrow=c(1,3))
 plot(TJ_BW, which=1:2)
 plot(TJ_BW, which=4)
-
-round(cooks.distance(TJ_BW),2)
 ```
 
-Upon inspection of plots and Cook's distances, we conclude that there
-are no influence points in the data set, as no observation has a Cook's
-distance greater than 1.
+Upon inspection of plots and Cook's distances, we conclude that there are no influence points in the data set, as no observation has a Cook's distance greater than 1.
 
 ```{r}
-predictors <- birthweight_data[, c("Length", "Headcirc", "Gestation", "mage", "mnocig", "mheight", "mppwt", "fage", "fedyrs", "fnocig", "fheight")]
-print(cor(predictors))
-library(car)
 vif_values <- vif(TJ_BW)
 print(vif_values)
+cor_fage_mage <- cor(birthweight_data$mage, birthweight_data$fage)
+print(cor_fage_mage)
 ```
 
-Upon inspection of correlation matrix, we note that variables mage and
-fage appear to be highly correlated (0.806), however their VIF values
-are under 5, therefore we conclude that the model has no problem of
-collinearity.
+Upon inspection of correlation matrix, we note that variables mage and fage appear to be highly correlated (0.807), however their VIF values are under 5, therefore we conclude that the model has no problem of collinearity.
 
 ## b)
 
@@ -270,18 +246,17 @@ summary(final_model)
 Order of removal: fage, mheight, fedyrs, fnocig, mnocig, Length,
 fheight, mage, mppwt
 
-### Question: Shouldnt we delete the coulomn lowbwt? As that should always have an effect on birthweigh, Also we still have to comment on the results and I really dont know what to add
+
+-   $H_0$: The residuals from the linear regression model follow a
+    normal distribution.
+-   $H_1$: The residuals from the linear regression model do not follow
+    a normal distribution.
 
 ```{r}
 residuals = residuals(final_model)
 test_results_sw = shapiro.test(residuals)
 cat("The p-value of the Shapiro-Wilk test is:", test_results_sw$p.value)
 ```
-
--   $H_0$: The residuals from the linear regression model follow a
-    normal distribution.
--   $H_1$: The residuals from the linear regression model do not follow
-    a normal distribution.
 
 ```{r, echo=FALSE, fig.height=3}
 par(mfrow = c(1, 3))
@@ -291,21 +266,9 @@ qqline(residuals, col = "red")
 hist(residuals, main = "Histogram of Residuals", xlab = "Residuals", breaks = 20)
 ```
 
-We do not reject $H_0$ so we cannot conclude that the residuals are not
-normally distribtuted, however after taking a good look at the QQ plot
-and the histoplot we conclude that our residuals are not normally
-distributed.
+We do not reject $H_0$ so we cannot conclude that the residuals are not normally distribtuted, however after taking a good look at the QQ plot and the histoplot we conclude that our normality of residual distribution is questionable.
 
 ## c)
-
-### Remark. I dont understand these formulas:
-
-Now we are left with two different models. Model 1 with R 2 = 0.771 and
-σˆ = 2.51: Fat = -23.6345 + 0.8565*Thigh + error Model 2 with R 2 =
-0.7862 and σˆ = 2.496: Fat = 6.7916 + 1.0006*Triceps -0.4314\*Midarm +
-error
-
-Slide 10 of lecture 8
 
 ```{r}
 fitted_values = fitted(final_model)
@@ -313,29 +276,22 @@ average_values = data.frame(
   Headcirc = mean(birthweight_data$Headcirc, na.rm = TRUE),
   Gestation = mean(birthweight_data$Gestation, na.rm = TRUE)
 )
-
 confidence_intervals = predict(final_model, newdata = average_values, interval =
                                  "confidence", level = 0.95)
-
 prediction_intervals = predict(final_model, newdata = average_values, interval = 
                                  "prediction", level = 0.95)
-
-print(fitted_values)
 print("95% Confidence Intervals for the Mean Response:")
 print(confidence_intervals)
 print("95% Prediction Intervals for a New Observation:")
 print(prediction_intervals)
 ```
 
-The output indicates that for babies with average head circumference and
-gestation, the model predicts a mean Birthweight of 3.31 kg, with a 95%
-confidence interval of 3.21 to 3.42 kg for the mean and a wider 95%
-prediction interval of 2.61 to 4.02 kg for individual observations,
-reflecting the increased uncertainty in predicting specific outcomes.
+The output indicates that for babies with average head circumference and gestation, the model predicts a mean Birthweight of 3.31 kg, with a 95% confidence interval of 3.21 to 3.42 kg for the mean and a wider 95% prediction interval of 2.61 to 4.02 kg for individual observations, reflecting the increased uncertainty in predicting specific outcomes.
 
 ## d)
 
 ```{r}
+par(mfrow = c(1,2))
 x=as.matrix(birthweight_data[,-3]) # remove the response variable
 y=as.double(as.matrix(birthweight_data[,3])) # only the response variable
 train=sample(1:nrow(x),0.67*nrow(x)) # train by using 2/3 of the data
@@ -345,53 +301,27 @@ lasso.mod=glmnet(x.train,y.train,alpha=1)
 cv.lasso=cv.glmnet(x.train,y.train,alpha=1,type.measure='mse')
 plot(lasso.mod,label=T,xvar="lambda") # have a look at the lasso path
 plot(cv.lasso) # the best lambda by cross-validation
-plot(cv.lasso$glmnet.fit,xvar="lambda",label=T)
 lambda.min=cv.lasso$lambda.min; lambda.1se=cv.lasso$lambda.1se
 coef(lasso.mod,s=cv.lasso$lambda.1se) # beta’s for the best lambda
 y.pred=predict(lasso.mod,s=lambda.1se,newx=x.test) # predict for test
 mse.lasso=mean((y.test-y.pred)^2) # mse for the predicted test rows
 new_model = lm(Birthweight ~ Length + Headcirc + Gestation + lowbwt, data=birthweight_data)
 summary(new_model)
-# summary(final_model)
 ```
 
-Upon inspection of the summary tables, although the LASSO model has a
-slightly higher R-squared value, we prefer the step-down model, because
-the two added variables in the LASSO model are insignificant and it does
-not make sense to add them in respect to complexity.
-
-### Question: Should we mention any of these plots as well?
-
-```{r, eval=FALSE}
-x=as.matrix(birthweight_data[,-3]) # remove the response variable
-y=as.double(as.matrix(birthweight_data[,3])) # only the response variable
-train=sample(1:nrow(x),0.67*nrow(x)) # train by using 2/3 of the data
-x.train=x[train,]; y.train=y[train] # data to train
-x.test=x[-train,]; y.test=y[-train] # data to test the prediction quality
-lasso.mod=glmnet(x.train,y.train,alpha=1)
-cv.lasso=cv.glmnet(x.train,y.train,alpha=1,type.measure='mse')
-plot(lasso.mod,label=T,xvar="lambda") # have a look at the lasso path
-plot(cv.lasso) # the best lambda by cross-validation
-plot(cv.lasso$glmnet.fit,xvar="lambda",label=T)
-lambda.min=cv.lasso$lambda.min; lambda.1se=cv.lasso$lambda.1se
-coef(lasso.mod,s=cv.lasso$lambda.1se) # beta’s for the best lambda
-y.pred=predict(lasso.mod,s=lambda.1se,newx=x.test) # predict for test
-mse.lasso=mean((y.test-y.pred)^2) # mse for the predicted test rows
-new_model = lm(Birthweight ~ Length + Headcirc + Gestation + lowbwt, data=birthweight_data)
-```
-
-```{r}
-summary(new_model)
-# summary(final_model)
-```
+Upon inspection of the summary tables, although the LASSO model has a slightly higher R-squared value, we prefer the step-down model, because the two added variables in the LASSO model are insignificant and it does not make sense to add them in respect to complexity.
 
 ## e)
 
+Effect of whether mothers smokes on low birth weight
+
 -   $H_0$: Smoking status of the mother has no effect on the likelihood
-    of the baby being born with low birthweight.
+    of the baby being born with low birth weight.
 
 -   $H_1$: Babies born to smoking mothers are more likely to have low
-    birthweight compared to those born to non-smoking mothers.
+    birth weight compared to those born to non-smoking mothers.
+
+Effect of mother's age over 35 on low birth weight
 
 -   $H_0$: There is no difference in the likelihood of having a baby
     with low birthweight between mothers over the age of 35 and those 35
@@ -434,7 +364,10 @@ barplot(mage35_lowbwt, beside = TRUE,
         args.legend = list(title = "lowbwt", x = "topright"))
 ```
 
-\``{r} table(birthweight_data$smoker, birthweight_data$lowbwt) table(birthweight_data$mage35, birthweight_data$lowbwt)`
+```{r} 
+table(birthweight_data$smoker, birthweight_data$lowbwt) 
+table(birthweight_data$mage35, birthweight_data$lowbwt)
+```
 
 The boxplot do not show a clear difference in birthweight resulting from
 the varibales 'smoker' and 'mage35'. Both the bar graph, and contingency
@@ -457,26 +390,17 @@ drop1(TJ_LOWBWT2, test="Chisq")
 exp(coef(TJ_LOWBWT2))
 ```
 
-In analyzing factors affecting low birthweight (lowbwt), 'mage35' was
-found not to significantly influence lowbwt (p-value = 0.941),
-suggesting maternal age over 35 doesn't notably alter the odds of low
-birthweight. For 'Gestation', each additional week reduces the odds of
-lowbwt by approximately 77% (odds ratio = 0.23, p-value = 9e-06).
-'Smoker' status increases the odds of lowbwt by 241 times (odds ratio =
-241, p-value = 0.013), pointing to a substantial risk increase due to
-smoking. These results highlight the importance of gestation duration
-and the detrimental impact of smoking on birthweight.
-
-### Question how did you get that smoker increases the odds and gestation decreases
+In analyzing factors affecting low birthweight (lowbwt), 'mage35' was found not to significantly influence lowbwt (p-value = 0.941), suggesting maternal age over 35 doesn't notably alter the odds of low birthweight. For 'Gestation', each additional week reduces the odds of lowbwt by approximately 77% (odds ratio = 0.23, p-value = 9e-06). 'Smoker' status increases the odds of lowbwt by 241 times (odds ratio = 241, p-value = 0.013), pointing to a substantial risk increase due to smoking. These results highlight the importance of gestation duration and the detrimental impact of smoking on birthweight.
 
 ## g)
-
+Interaction gestation and smoking
 -   $H_0$: There is no interaction effect between gestation length and
     smoking status on the likelihood of low birthweight.
 
 -   $H_1$: There is an interaction effect between gestation length and
     smoking status on the likelihood of low birthweight.
 
+Interaction gestation and mage35
 -   $H_0$: There is no interaction effect between gestation length and
     maternal age over 35 on the likelihood of low birthweight
 
@@ -487,41 +411,26 @@ and the detrimental impact of smoking on birthweight.
 model_gestation_smoker = glm(lowbwt ~ Gestation * smoker, data = birthweight_data, family = binomial)
 anova_gestation_smoker <- anova(model_gestation_smoker, test="Chisq")
 p_value_gestation_smoker <- anova_gestation_smoker["Gestation:smoker", "Pr(>Chi)"]
-
 model_gestation_mage35 = glm(lowbwt ~ Gestation * mage35, data = birthweight_data, family = binomial)
 anova_gestation_mage35 <- anova(model_gestation_mage35, test="Chisq")
 p_value_gestation_mage35 <- anova_gestation_mage35["Gestation:mage35", "Pr(>Chi)"]
-
 print(paste("P-value for Gestation:smoker interaction:", p_value_gestation_smoker))
 print(paste("P-value for Gestation:mage35 interaction:", p_value_gestation_mage35))
-
 ```
 
-#### changed anova code to do chisquared, and removed summary, turned of warning/probability 0 or 1 occured, shouldnt we say something about that?
-
-Both interaction terms—'Gestation:smoker' and 'Gestation:mage35'—do not
-demonstrate statistically significant effects on low birthweight. The
-p-value for 'Gestation:smoker' is 0.198, and for 'Gestation:mage35', it
-is 0.42. These p-values indicate that the interactions between gestation
-length and either smoking status or maternal age over 35 do not
-significantly alter the risk of low birthweight in these models.
+Both interaction terms—'Gestation:smoker' and 'Gestation:mage35'—do not demonstrate statistically significant effects on low birthweight. The p-value for 'Gestation:smoker' is 0.198, and for 'Gestation:mage35', it is 0.42. These p-values indicate that the interactions between gestation length and either smoking status or maternal age over 35 do not significantly alter the risk of low birthweight in these models. We therefore choose the model without interaction terms.
 
 ## h)
 
 ```{r}
 model_g <- glm(lowbwt ~ Gestation + smoker, data = birthweight_data, family="binomial")
-
 new_data <- data.frame(Gestation = c(40, 40),
                        smoker = c(0, 1))
 probabilities <- predict(model_g, newdata = new_data, type = "response")
 print(probabilities)
 ```
 
-For babies born at 40 weeks of gestation, the predicted probability of
-low birth weight is \<0.001% for non-smokers and 0.02% for smokers,
-highlighting the significant impact of maternal smoking on birth weight
-outcomes. This underscores the importance of smoking cessation
-interventions during pregnancy to mitigate the risk of low birth weight.
+For babies born at 40 weeks of gestation, the predicted probability of low birth weight is \<0.001% for non-smokers and 0.02% for smokers, highlighting the significant impact of maternal smoking on birth weight outcomes. This underscores the importance of smoking cessation interventions during pregnancy to mitigate the risk of low birth weight.
 
 ## i)
 
@@ -531,22 +440,9 @@ chi_squared_result <- chisq.test(contingency_table)
 print(chi_squared_result)
 ```
 
-Applying a contingency table test, such as the chi-squared test, to
-address the questions is a valid approach with certain limitations. A
-major advantage of this method is its straightforwardness and its
-capacity to explore associations between categorical variables without
-assuming a specific relationship form. However, one significant
-disadvantage is its unreliability with very small sample sizes (e.g.,
-\<5 in some groups), which can make chi-squared results misleading, and
-is this case for this dataset. Additionally, while chi-squared tests are
-simple and useful for initial explorations, they lack the ability to
-adjust for other variables or to interpret effects in terms of odds
-ratios, unlike logistic regression. This simplicity might lead to
-overlooking complex nuances in the data.
+Applying a contingency table test, such as the chi-squared test, to address the questions is a valid approach with certain limitations. A major advantage of this method is its straightforwardness and its capacity to explore associations between categorical variables without assuming a specific relationship form. However, one significant disadvantage is its unreliability with very small sample sizes (e.g., \<5 in some groups), which can make chi-squared results misleading, and is this case for this dataset. Additionally, while chi-squared tests are simple and useful for initial explorations, they lack the ability to adjust for other variables or to interpret effects in terms of odds ratios, unlike logistic regression. This simplicity might lead to overlooking complex nuances in the data.
 
 # Exercise 3
-
-## Preliminary
 
 ```{r}
 awards_data=read.table(file="awards.txt",header=TRUE)
@@ -561,27 +457,16 @@ awards_data=read.table(file="awards.txt",header=TRUE)
 
 ```{r}
 awards_data$prog = factor(awards_data$prog)
-model = glm(num_awards ~ prog, family = poisson(link = "log"), data = awards_data)
+model = glm(num_awards ~ prog, family = poisson, data = awards_data)
 summary(model)
-
 new_data = data.frame(prog = factor(c(1, 2, 3)))
 predicted_awards = predict(model, newdata = new_data, type = "response")
-
 print(predicted_awards)
 ```
 
-Based on the significant p-values for prog2 (general program) and the
-intercept in the Poisson regression model summary, we can reject $H_0$
-for these variables, indicating that the type of program influences the
-number of awards students receive. The Poisson regression analysis
-reveals that students in the general program (prog2) are statistically
-likely to receive more awards than those in vocational programs, as
-indicated by significant coefficients. Academic program students (prog3)
-also show an increased number of awards, though not statistically
-significant. Predictions confirm the "general" program as most favorable
-for receiving awards.
 
-## Maybe a bit too long check later
+Significant p-values for prog2 (general program) and the intercept in the Poisson regression model suggest that program type affects student awards. Students in the general program are likely to receive more awards than those in vocational ones, shown by significant coefficients. Although academic program students also tend to get more awards, it's not statistically significant. Thus, the general program is the most favorable for receiving awards.
+
 
 ## b)
 
@@ -596,39 +481,20 @@ kruskal_test_result = kruskal.test(num_awards ~ prog, data = awards_data)
 cat("The p-value of the Shapiro-Wilk test is:", kruskal_test_result$p.value)
 ```
 
-We reject H0 that everything is the same as the p-value is 0.005.
-However we can not infer which program type is the best for the number
-of awards.
+We reject H0 that everything is the same as the p-value is 0.005. However we can not infer which program type is the best for the number of awards.
 
 ## c)
-
-## Should we even add those h0 and h1? Not sure if it makes sense here
-
--   $H_0$: The interaction between program type and math score does not
-    significantly affect the number of awards students receive.
--   $H_1$: The interaction between program type and math score
-    significantly affects the number of awards students receive.
 
 ```{r}
 awardsinteractionmath = glm(num_awards ~ factor(prog)*math, family="poisson", data=awards_data)
 summary(awardsinteractionmath)
-
 awardsmath = glm(num_awards ~ factor(prog)+math, family="poisson", data=awards_data)
 summary(awardsmath)
-
-# Create a new data frame for prediction with prog as numeric 1, 2, 3
 new_data = data.frame(prog = factor(c(1, 2, 3), levels = c(1, 2, 3)),
                        math = 56)
-
-# Predict the number of awards using the model
 predictions = predict(awardsmath, newdata=new_data, type="response")
-
-# Add predictions to the new_data dataframe for easy viewing
 new_data$predicted_awards = predictions
 print(new_data)
 ```
 
-No significant interaction results were found therefor we removed the
-interaction. Looking at the additive model with math included, we
-conclude that program 3 is the best with a predicted amount of awards of
-1.213.
+No significant interaction results were found therefor we removed the interaction. Looking at the additive model with math included, we conclude that program 3 is the best with a predicted amount of awards of 1.213.
